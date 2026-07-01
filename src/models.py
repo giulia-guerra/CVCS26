@@ -1,0 +1,1 @@
+# Wrapper per caricare DINO, SigLIP, ecc.
