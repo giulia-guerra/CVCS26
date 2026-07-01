@@ -9,8 +9,3 @@ Computer Vision and Cognitive Systems Project
 - src/
 - notebooks/
 - scripts_slurm/
-
-## Team
-
-- Antonio D'Agata
-- Nome collega
