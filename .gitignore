@@ -1,1 +1,5 @@
-# Ignorate dati, checkpoint e venv!
+venv/
+__pycache__/
+*.pyc
+.vscode/
+*.pth
