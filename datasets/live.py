@@ -6,5 +6,15 @@ class LIVEDataset(BaseDataset):
     def __init__(self, root_dir, transform=None):
         super().__init__(root_dir, transform)
 
-        # Verrà riempito quando avremo il dataset reale
         self.samples = []
+
+    def __getitem__(self, idx):
+
+        image_path, mos = self.samples[idx]
+
+        image = self.load_image(image_path)
+
+        return {
+            "image": image,
+            "mos": mos
+        }
