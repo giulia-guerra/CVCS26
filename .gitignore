@@ -1,5 +1,4 @@
-venv/
+.venv/
 __pycache__/
 *.pyc
-.vscode/
-*.pth
+.pytest_cache/
