@@ -1,5 +1,35 @@
+# Virtual environment
 venv/
+.env/
+.venv/
+
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+
+# VS Code
 .vscode/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Python packaging
+*.egg-info/
+
+# Modelli e checkpoint
 *.pth
+*.pt
+*.ckpt
+
+# Log
+logs/
+wandb/
+
+# Output
+outputs/
+results/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
