@@ -1,0 +1,8 @@
+{
+    "terminal.integrated.automationProfile.linux" : { "path": "$projectFolder/scripts_slurm/start_dev_gpu.sh" },
+    "python.defaultInterpreterPath": "${env:HOME}/envs/cvcs_env/bin/python",
+    "python.terminal.activateEnvInCurrentTerminal": true,
+    "python.analysis.extraPaths": [
+        "${env:HOME}/envs/cvcs_env/lib/python3.13/site-packages"
+    ]
+}
