@@ -1,20 +1,28 @@
-from pathlib import Path
-
 from .base_dataset import BaseDataset
 
 
 class PIPALDataset(BaseDataset):
 
     def __init__(self, root_dir, transform=None):
-        super().__init__(root_dir, transform)
+
+        super().__init__(
+            root_dir,
+            transform
+        )
 
         self.samples = []
 
         self.load_metadata()
 
+
     def load_metadata(self):
 
         label_dir = self.root_dir / "Train_Label"
+
+        ref_dir = self.root_dir / "Train_Ref"
+
+        dist_dir = self.root_dir / "Dist_Imgs"
+
 
         for label_file in sorted(label_dir.glob("*.txt")):
 
@@ -22,28 +30,73 @@ class PIPALDataset(BaseDataset):
 
                 for line in f:
 
-                    image_name, mos = line.strip().split(",")
+                    line = line.strip()
 
-                    image_path = (
-                        self.root_dir
-                        / "Dist_Imgs"
-                        / image_name
+                    if not line:
+                        continue
+
+
+                    image_name, mos = line.split(",")
+
+
+                    distorted_path = (
+                        dist_dir /
+                        image_name
                     )
 
-                    self.samples.append(
-                        (
-                            image_path,
-                            float(mos)
+
+                    # esempio:
+                    # A0001_00_00.bmp
+                    #
+                    # prende:
+                    # A0001
+
+                    ref_name = (
+                        image_name
+                        .split("_")[0]
+                        + ".bmp"
+                    )
+
+
+                    reference_path = (
+                        ref_dir /
+                        ref_name
+                    )
+
+
+                    if (
+                        distorted_path.exists()
+                        and reference_path.exists()
+                    ):
+
+                        self.samples.append(
+                            {
+                                "reference": reference_path,
+                                "distorted": distorted_path,
+                                "mos": float(mos),
+                                "name": image_name
+                            }
                         )
-                    )
+
 
     def __getitem__(self, idx):
 
-        image_path, mos = self.samples[idx]
+        sample = self.samples[idx]
 
-        image = self.load_image(image_path)
+
+        reference = self.load_image(
+            sample["reference"]
+        )
+
+
+        distorted = self.load_image(
+            sample["distorted"]
+        )
+
 
         return {
-            "image": image,
-            "mos": mos
+            "reference": reference,
+            "distorted": distorted,
+            "mos": sample["mos"],
+            "name": sample["name"]
         }

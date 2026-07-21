@@ -1,11 +1,11 @@
 from pathlib import Path
 from PIL import Image
-import numpy as np
 
 
 class BaseDataset:
     """
-    Classe base per i dataset IQA.
+    Classe base per dataset IQA.
+    Restituisce immagini PIL RGB.
     """
 
     def __init__(self, root_dir, transform=None):
@@ -13,18 +13,23 @@ class BaseDataset:
         self.transform = transform
         self.samples = []
 
+
     def __len__(self):
         return len(self.samples)
 
-    def load_image(self, image_path):
-        image = Image.open(image_path).convert("RGB")
 
-        image = np.array(image)
+    def load_image(self, image_path):
+        """
+        Carica immagine come PIL RGB.
+        """
+
+        image = Image.open(image_path).convert("RGB")
 
         if self.transform:
             image = self.transform(image)
 
         return image
+
 
     def __getitem__(self, idx):
         raise NotImplementedError(
