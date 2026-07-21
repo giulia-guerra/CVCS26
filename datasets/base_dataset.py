@@ -1,37 +1,51 @@
-from pathlib import Path
+import torch
+from torch.utils.data import Dataset
 from PIL import Image
 
 
-class BaseDataset:
+class BaseDataset(Dataset):
     """
-    Classe base per dataset IQA.
-    Restituisce immagini PIL RGB.
+    Base class for IQA datasets.
     """
 
-    def __init__(self, root_dir, transform=None):
-        self.root_dir = Path(root_dir)
+    def __init__(self, transform=None):
+
         self.transform = transform
-        self.samples = []
 
 
-    def __len__(self):
-        return len(self.samples)
+    def load_image(self, path):
 
-
-    def load_image(self, image_path):
         """
-        Carica immagine come PIL RGB.
+        Load image using PIL.
         """
 
-        image = Image.open(image_path).convert("RGB")
-
-        if self.transform:
-            image = self.transform(image)
+        image = Image.open(path).convert("RGB")
 
         return image
 
 
-    def __getitem__(self, idx):
-        raise NotImplementedError(
-            "Le sottoclassi devono implementare __getitem__"
-        )
+
+    def apply_transform(self, image):
+
+        """
+        Apply torchvision transform.
+        """
+
+        if self.transform is not None:
+            image = self.transform(image)
+
+        else:
+            # default transform
+            image = image.resize((224,224))
+
+            image = torch.from_numpy(
+                __import__("numpy")
+                .array(image)
+            )
+
+            image = image.permute(2,0,1)
+
+            image = image.float() / 255.0
+
+
+        return image

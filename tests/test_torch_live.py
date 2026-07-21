@@ -14,7 +14,6 @@ DATASET_ROOT = (
     "datasets/LIVEIQA_release2"
 )
 
-
 def test_live_dataloader():
 
     dataset = LIVEDataset(DATASET_ROOT)
@@ -25,13 +24,19 @@ def test_live_dataloader():
         shuffle=True
     )
 
+
     batch = next(iter(loader))
+
 
     print("Batch immagini:", batch["image"].shape)
     print("Batch MOS:", batch["mos"])
 
+
     assert "image" in batch
     assert "mos" in batch
 
+
     assert batch["image"].shape[0] == 4
-    assert batch["image"].shape[-1] == 3
+
+    # canali RGB
+    assert batch["image"].shape[1] == 3
