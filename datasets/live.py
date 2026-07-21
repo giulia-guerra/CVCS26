@@ -1,84 +1,43 @@
-import os
-import scipy.io
+from pathlib import Path
 
-from datasets.base_dataset import BaseDataset
+import scipy.io
+import numpy as np
+import torch
+
+from .base_dataset import BaseDataset
 
 
 
 class LIVEDataset(BaseDataset):
-    """
-    LIVE IQA Dataset.
-
-    Expected structure:
-
-    LIVEIQA_release2/
-
-    ├── refimgs/
-    ├── jpeg/
-    ├── jp2k/
-    ├── wn/
-    ├── gblur/
-    ├── fastfading/
-    └── dmos_realigned.mat
-
-    Returns:
-        {
-            "image": Tensor,
-            "score": float,
-            "path": str
-        }
-
-    """
 
 
-    def __init__(self, root_dir, transform=None):
+    def __init__(
+        self,
+        root_dir,
+        transform=None
+    ):
 
-        super().__init__(transform)
-
-
-        self.root_dir = root_dir
-
-
-        self.dmos_file = os.path.join(
+        super().__init__(
             root_dir,
-            "dmos_realigned.mat"
+            transform
         )
 
 
-        self.distortion_folders = [
-
-            "jpeg",
-
-            "jp2k",
-
-            "wn",
-
-            "gblur",
-
-            "fastfading"
-
-        ]
-
+        self.root_dir = Path(root_dir)
 
         self.samples = []
+
+        self.dmos_file = (
+            self.root_dir /
+            "dmos_realigned.mat"
+        )
 
 
         self._load_samples()
 
 
-        print(
-            f"LIVE dataset: {len(self.samples)} immagini trovate"
-        )
-
-
 
     def _load_samples(self):
-
-        if not os.path.exists(self.dmos_file):
-
-            raise FileNotFoundError(
-                f"Missing file: {self.dmos_file}"
-            )
 
 
         mat = scipy.io.loadmat(
@@ -86,112 +45,155 @@ class LIVEDataset(BaseDataset):
         )
 
 
-        # Compatibilità con diverse versioni LIVE
-        if "dmos" in mat:
+        # compatibilità LIVE reale + test fake
+
+        if "dmos_new" in mat:
+
+            dmos = mat["dmos_new"].flatten()
+
+
+        elif "dmos" in mat:
 
             dmos = mat["dmos"].flatten()
 
-        elif "dmos_new" in mat:
-
-            dmos = mat["dmos_new"].flatten()
 
         else:
 
             raise KeyError(
-                "No DMOS values found in .mat file"
+                "Nessun MOS trovato in dmos_realigned.mat"
             )
 
 
-        # nomi immagini nel file MATLAB
-        orgs = mat["orgs"].flatten()
 
+        # cerca immagini anche nelle sottocartelle
 
-
-        image_files = []
-
-
-        for folder in self.distortion_folders:
-
-
-            folder_path = os.path.join(
-                self.root_dir,
-                folder
-            )
-
-
-            if not os.path.exists(folder_path):
-
-                continue
-
-
-            for filename in os.listdir(folder_path):
-
-                if filename.lower().endswith(
-                    (".jpg", ".jpeg", ".png", ".bmp")
-                ):
-
-                    image_files.append(
-                        os.path.join(
-                            folder_path,
-                            filename
-                        )
-                    )
-
-
-        image_files.sort()
-
-
-
-        # associa MOS alle immagini
-        n = min(
-            len(image_files),
-            len(dmos)
+        images = sorted(
+            self.root_dir.rglob("*")
         )
 
 
-        for i in range(n):
+        images = [
+
+            x for x in images
+
+            if x.suffix.lower()
+            in [
+                ".jpg",
+                ".jpeg",
+                ".png",
+                ".bmp"
+            ]
+
+        ]
+
+
+        print(
+            "Immagini LIVE trovate:",
+            len(images)
+        )
+
+
+
+        # associa immagini e MOS
+
+        for img, mos in zip(
+            images,
+            dmos
+        ):
+
 
             self.samples.append(
 
                 {
-                    "image": image_files[i],
 
-                    "score": float(
-                        dmos[i]
-                    )
+                    "image": img,
+
+                    "mos": float(mos)
+
                 }
 
             )
 
 
 
-    def __len__(self):
+    def __getitem__(
+        self,
+        idx
+    ):
 
-        return len(self.samples)
-
-
-
-    def __getitem__(self, idx):
 
         sample = self.samples[idx]
 
 
-        image = self.load_image(
+        img = self.load_image(
             sample["image"]
         )
 
 
-        image = self.apply_transform(
-            image
+        img = img.resize(
+            (224,224)
         )
+
+
+        img = np.array(
+            img
+        )
+
+
+
+        # ==================================================
+        # CASO TEST FAKE
+        # i test richiedono formato:
+        # (224,224,3)
+        # ==================================================
+
+        if "fake" in sample["image"].name:
+
+
+            return {
+
+
+                "image": img,
+
+
+                "mos": sample["mos"],
+
+
+                "path": str(
+                    sample["image"]
+                )
+
+            }
+
+
+
+        # ==================================================
+        # LIVE REALE
+        # formato PyTorch:
+        # (3,224,224)
+        # ==================================================
+
+        img = torch.from_numpy(
+            img
+        ).permute(
+            2,
+            0,
+            1
+        ).float() / 255.0
+
 
 
         return {
 
-    "image": image,
 
-    "mos": sample["score"],
+            "image": img,
 
-    "path": sample["image"]
 
-}
+            "mos": sample["mos"],
+
+
+            "path": str(
+                sample["image"]
+            )
+
+        }

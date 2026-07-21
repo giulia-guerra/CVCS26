@@ -1,51 +1,57 @@
-import torch
 from torch.utils.data import Dataset
 from PIL import Image
+import torchvision.transforms as transforms
+import numpy as np
+
 
 
 class BaseDataset(Dataset):
-    """
-    Base class for IQA datasets.
-    """
 
-    def __init__(self, transform=None):
 
+    def __init__(
+        self,
+        root_dir,
+        transform=None
+    ):
+
+        self.root_dir = root_dir
         self.transform = transform
 
 
-    def load_image(self, path):
 
-        """
-        Load image using PIL.
-        """
+    def __len__(self):
 
-        image = Image.open(path).convert("RGB")
-
-        return image
+        return len(self.samples)
 
 
 
-    def apply_transform(self, image):
+    def load_image(self,path):
 
-        """
-        Apply torchvision transform.
-        """
+        img = Image.open(path)
 
-        if self.transform is not None:
-            image = self.transform(image)
+        img = img.convert("RGB")
 
-        else:
-            # default transform
-            image = image.resize((224,224))
-
-            image = torch.from_numpy(
-                __import__("numpy")
-                .array(image)
-            )
-
-            image = image.permute(2,0,1)
-
-            image = image.float() / 255.0
+        return img
 
 
-        return image
+
+    def apply_transform(self,img):
+
+
+        if self.transform:
+
+            return self.transform(img)
+
+
+
+        img = img.resize(
+            (224,224)
+        )
+
+
+        img = np.array(
+            img
+        )
+
+
+        return img

@@ -30,11 +30,13 @@ def test_pipal_train():
     transform = transforms.Compose(
         [
             transforms.Resize(
-                (224,224)
+                (224, 224)
             ),
+
             transforms.ToTensor()
         ]
     )
+
 
 
     dataset = PIPALDataset(
@@ -44,19 +46,53 @@ def test_pipal_train():
     )
 
 
-    assert len(dataset) > 0
+
+    print(
+        "Numero immagini PIPAL:",
+        len(dataset)
+    )
+
+
+
+    # controllo singolo elemento
+    sample = dataset[0]
+
+
+    assert "image" in sample
+
+    assert "mos" in sample
+
+    assert "path" in sample
+
+
+
+    assert sample["image"].shape[0] == 3
 
 
 
     loader = DataLoader(
         dataset,
         batch_size=4,
-        shuffle=True
+        shuffle=True,
+        num_workers=0
     )
 
 
 
     batch = next(iter(loader))
+
+
+
+    print(
+        "Batch immagini:",
+        batch["image"].shape
+    )
+
+
+    print(
+        "Batch MOS:",
+        batch["mos"]
+    )
 
 
 
@@ -73,16 +109,3 @@ def test_pipal_train():
 
 
     assert len(batch["mos"]) == 4
-
-
-
-    print(
-        "Batch immagini:",
-        batch["image"].shape
-    )
-
-
-    print(
-        "Batch MOS:",
-        batch["mos"]
-    )
