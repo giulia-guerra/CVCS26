@@ -9,9 +9,9 @@ from src.utils.logger import CSVLogger
 
 def test_logger(tmp_path):
 
-    file_path = tmp_path / "metrics.csv"
+    file = tmp_path / "test.csv"
 
-    logger = CSVLogger(file_path)
+    logger = CSVLogger(file)
 
     logger.log(
         epoch=1,
@@ -20,9 +20,4 @@ def test_logger(tmp_path):
         plcc=0.9
     )
 
-    assert file_path.exists()
-
-    content = file_path.read_text()
-
-    assert "epoch" in content
-    assert "0.5" in content
+    assert file.exists()

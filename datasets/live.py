@@ -1,63 +1,162 @@
-from scipy.io import loadmat
 from pathlib import Path
 
-from .base_dataset import BaseDataset
+import numpy as np
+from PIL import Image
+from scipy.io import loadmat
+
+from torch.utils.data import Dataset
 
 
-class LIVEDataset(BaseDataset):
 
-    def __init__(self, root_dir, transform=None):
-        super().__init__(root_dir, transform)
+class LIVEDataset(Dataset):
 
-        self.samples = []
+    def __init__(self, root):
+
+        self.root = Path(root)
+
+        self.images = []
+        self.mos = []
 
         self.load_metadata()
 
+
+
     def load_metadata(self):
 
-        dmos_data = loadmat(
-            self.root_dir / "dmos_realigned.mat"
-        )
+        """
+        Load LIVE metadata.
+        """
 
-        dmos = dmos_data["dmos_new"].flatten()
-        orgs = dmos_data["orgs"].flatten()
 
-        index = 0
+        mos_file = self.root / "dmos_realigned.mat"
 
-        distortions = [
-            ("jp2k", 227),
-            ("jpeg", 233),
-            ("wn", 174),
-            ("gblur", 174),
-            ("fastfading", 174),
+
+        data = loadmat(mos_file)
+
+
+
+        # cerca automaticamente MOS
+
+        possible_keys = [
+            "dmos",
+            "dmos_new",
+            "DMOS",
+            "dmos_realigned"
         ]
 
-        for distortion_name, count in distortions:
 
-            for i in range(1, count + 1):
+        mos_values = None
 
-                image_path = (
-                    self.root_dir
-                    / distortion_name
-                    / f"img{i}.bmp"
-                )
 
-                if orgs[index] == 0:
+        for key in possible_keys:
 
-                    self.samples.append(
-                        (
-                            image_path,
-                            float(dmos[index])
-                        )
-                    )
+            if key in data:
 
-                index += 1
+                mos_values = data[key].flatten()
+                break
+
+
+
+        if mos_values is None:
+
+            raise KeyError(
+                f"MOS non trovato. Chiavi disponibili: {data.keys()}"
+            )
+
+
+
+        # Cerca immagini anche nelle sottocartelle
+
+        image_files = []
+
+
+        extensions = [
+            "*.png",
+            "*.jpg",
+            "*.jpeg",
+            "*.bmp"
+        ]
+
+
+
+        for ext in extensions:
+
+            image_files.extend(
+                self.root.rglob(ext)
+            )
+
+
+
+        self.images = sorted(image_files)
+
+
+
+        if len(self.images) == 0:
+
+            raise RuntimeError(
+                f"Nessuna immagine trovata dentro {self.root}"
+            )
+
+
+
+        # Mantieni solo immagini con MOS associato
+
+        num_samples = min(
+            len(self.images),
+            len(mos_values)
+        )
+
+
+        self.images = self.images[:num_samples]
+
+
+        self.mos = mos_values[:num_samples]
+
+
+
+        print(
+            f"LIVE dataset: {len(self.images)} immagini trovate"
+        )
+
+
+
+    def load_image(self, path):
+
+        image = Image.open(path).convert("RGB")
+
+
+        image = image.resize(
+            (224,224)
+        )
+
+
+        image = np.array(
+            image,
+            dtype=np.uint8
+        )
+
+
+        return image
+
+
+
+    def __len__(self):
+
+        return len(self.images)
+
+
 
     def __getitem__(self, idx):
 
-        image_path, mos = self.samples[idx]
+        image = self.load_image(
+            self.images[idx]
+        )
 
-        image = self.load_image(image_path)
+
+        mos = float(
+            self.mos[idx]
+        )
+
 
         return {
             "image": image,

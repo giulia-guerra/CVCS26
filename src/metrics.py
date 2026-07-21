@@ -1,1 +1,0 @@
-# Calcolo SRCC, PLCC, Coseno, L2

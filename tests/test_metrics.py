@@ -14,19 +14,19 @@ from src.metrics.metrics import (
 )
 
 
-def test_correlations():
+def test_metrics():
 
-    pred = torch.tensor([1., 2., 3., 4.])
-    target = torch.tensor([1., 2., 3., 4.])
+    pred = torch.tensor([1.,2.,3.,4.])
+    target = torch.tensor([1.,2.,3.,4.])
 
-    assert srcc(pred, target) == 1.0
-    assert plcc(pred, target) == 1.0
+    assert abs(srcc(pred,target) - 1.0) < 1e-6
+    assert abs(plcc(pred,target) - 1.0) < 1e-6
 
 
-def test_distances():
+def test_distance():
 
-    x = torch.tensor([1., 0.])
-    y = torch.tensor([1., 0.])
+    x = torch.tensor([1.,0.,0.])
+    y = torch.tensor([1.,0.,0.])
 
-    assert cosine_distance(x, y) == 0
-    assert l2_distance(x, y) == 0
+    assert cosine_distance(x,y) == 0
+    assert l2_distance(x,y) == 0
