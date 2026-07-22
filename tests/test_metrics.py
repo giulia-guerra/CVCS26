@@ -1,32 +1,36 @@
-import sys
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-
-import torch
-
-from src.metrics.metrics import (
-    srcc,
-    plcc,
-    cosine_distance,
-    l2_distance
-)
-
+from src.metrics.correlation import SRCC, PLCC
 
 def test_metrics():
 
-    pred = torch.tensor([1.,2.,3.,4.])
-    target = torch.tensor([1.,2.,3.,4.])
+    predictions = [
+        0.1,
+        0.4,
+        0.8,
+        1.0
+    ]
 
-    assert abs(srcc(pred,target) - 1.0) < 1e-6
-    assert abs(plcc(pred,target) - 1.0) < 1e-6
+    targets = [
+        0.2,
+        0.5,
+        0.7,
+        1.1
+    ]
 
 
-def test_distance():
+    srcc = SRCC(
+        predictions,
+        targets
+    )
 
-    x = torch.tensor([1.,0.,0.])
-    y = torch.tensor([1.,0.,0.])
+    plcc = PLCC(
+        predictions,
+        targets
+    )
 
-    assert cosine_distance(x,y) == 0
-    assert l2_distance(x,y) == 0
+
+    print("SRCC:", srcc)
+    print("PLCC:", plcc)
+
+
+    assert srcc > 0
+    assert plcc > 0

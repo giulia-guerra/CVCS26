@@ -1,23 +1,17 @@
-import sys
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-
-from src.utils.logger import CSVLogger
+from src.utils.logger import save_result
+import os
 
 
-def test_logger(tmp_path):
+def test_logger():
 
-    file = tmp_path / "test.csv"
-
-    logger = CSVLogger(file)
-
-    logger.log(
-        epoch=1,
-        loss=0.5,
-        srcc=0.8,
-        plcc=0.9
+    save_result(
+        "DINOv3-small",
+        "TID2013",
+        0.75,
+        0.78
     )
 
-    assert file.exists()
+
+    assert os.path.exists(
+        "logs/results.csv"
+    )

@@ -1,45 +1,47 @@
 import csv
-from pathlib import Path
+import os
 
 
-class CSVLogger:
-
-    def __init__(self, file_path):
-
-        self.file_path = Path(file_path)
-
-        if not self.file_path.exists():
-
-            with open(self.file_path, "w", newline="") as f:
-
-                writer = csv.writer(f)
-
-                writer.writerow(
-                    [
-                        "epoch",
-                        "loss",
-                        "srcc",
-                        "plcc"
-                    ]
-                )
-
-    def log(
-        self,
-        epoch,
-        loss,
+def save_result(
+        model,
+        dataset,
         srcc,
-        plcc
-    ):
+        plcc,
+        file_path="logs/results.csv"
+):
 
-        with open(self.file_path, "a", newline="") as f:
+    os.makedirs(
+        "logs",
+        exist_ok=True
+    )
 
-            writer = csv.writer(f)
 
-            writer.writerow(
-                [
-                    epoch,
-                    loss,
-                    srcc,
-                    plcc
-                ]
-            )
+    file_exists = os.path.isfile(
+        file_path
+    )
+
+
+    with open(
+        file_path,
+        "a",
+        newline=""
+    ) as f:
+
+        writer = csv.writer(f)
+
+
+        if not file_exists:
+            writer.writerow([
+                "model",
+                "dataset",
+                "SRCC",
+                "PLCC"
+            ])
+
+
+        writer.writerow([
+            model,
+            dataset,
+            srcc,
+            plcc
+        ])
