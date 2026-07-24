@@ -1,9 +1,16 @@
-from torch.utils.data import DataLoader
+# Factory per la creazione dei Dataset e dei DataLoader della pipeline IQA.
+# Permette di selezionare dinamicamente il dataset da utilizzare (LIVE, TID2013 o PIPAL)
+# tramite il nome passato dall'utente.
+# La funzione get_dataset inizializza il dataset richiesto mentre get_dataloader
+# crea il DataLoader PyTorch con batch, shuffle e funzione di collate personalizzata.
+# In questo modo tutti i dataset condividono la stessa interfaccia e possono essere
+# utilizzati dalla pipeline di feature extraction indipendentemente dal dataset scelto.
 
+
+from torch.utils.data import DataLoader
 from datasets.live import LIVEDataset
 from datasets.tid2013 import TID2013Dataset
 from datasets.pipal import PIPALDataset
-
 from dataloader.collate import iqc_collate
 
 

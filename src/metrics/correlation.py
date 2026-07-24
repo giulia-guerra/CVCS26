@@ -1,3 +1,10 @@
+# Implementazione delle metriche di correlazione utilizzate per valutare i modelli IQA.
+# Calcola PLCC (Pearson Linear Correlation Coefficient) e SRCC (Spearman Rank
+# Correlation Coefficient) confrontando i valori predetti dal modello con i valori
+# MOS/DMOS reali del dataset.
+# Le metriche vengono utilizzate per misurare rispettivamente la correlazione lineare
+# e la correlazione basata sui ranghi tra qualità stimata e qualità percepita.
+
 import numpy as np
 from scipy.stats import pearsonr, spearmanr
 

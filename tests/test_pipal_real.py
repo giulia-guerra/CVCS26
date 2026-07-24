@@ -1,50 +1,44 @@
-import sys
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0,str(ROOT))
-
-
 from datasets.pipal import PIPALDataset
 
 
+def test_pipal():
 
-DATASET_ROOT = (
-    "/work/cvcs2026/"
-    "Cross_Entropy_Champions/"
-    "datasets/PIPAL"
-)
-
-
-
-def test_pipal_val():
-
-
-    dataset=PIPALDataset(
-        DATASET_ROOT,
-        split="val"
+    dataset = PIPALDataset(
+        "/work/cvcs2026/Cross_Entropy_Champions/datasets/PIPAL"
     )
 
 
     print(
-        "Numero immagini:",
+        "Campioni:",
         len(dataset)
     )
 
 
-    sample=dataset[0]
+    sample = dataset[0]
 
+
+    print(type(sample["ref_image"]))
+    print(type(sample["dist_image"]))
 
     print(
-        sample["image"].shape
+        "REF:",
+        sample["ref_image"].size
     )
 
+    print(
+        "DIST:",
+        sample["dist_image"].size
+    )
 
     print(
+        "MOS:",
         sample["mos"]
     )
 
 
+    assert "ref_image" in sample
+    assert "dist_image" in sample
 
-    assert "image" in sample
-    assert "mos" in sample
+    assert sample["ref_image"] != sample["dist_image"]
+
+    print("=== TEST PIPAL OK ===")

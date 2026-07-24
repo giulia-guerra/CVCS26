@@ -1,3 +1,10 @@
+# Questo file gestisce il salvataggio dei risultati della valutazione dei modelli
+# IQA. La funzione principale permette di registrare in un file CSV le informazioni
+# relative al modello utilizzato, al dataset analizzato e alle metriche ottenute
+# (SRCC e PLCC), creando automaticamente la cartella di log e l'intestazione del
+# file quando necessario.
+
+
 import csv
 import os
 

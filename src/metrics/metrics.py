@@ -1,3 +1,9 @@
+# Questo file raccoglie le metriche principali utilizzate nella pipeline di
+# valutazione IQA. Contiene le implementazioni di SRCC e PLCC compatibili con
+# input PyTorch o NumPy e include funzioni aggiuntive per il confronto delle
+# feature estratte dai modelli vision tramite distanza coseno e distanza L2.
+
+
 import torch
 from scipy.stats import spearmanr, pearsonr
 

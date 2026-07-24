@@ -1,3 +1,11 @@
+# Questo file contiene lo script principale per la valutazione iniziale della
+# pipeline IQA (Phase 1). Carica il dataset LIVE tramite il relativo DataLoader,
+# raccoglie i valori MOS reali e calcola le metriche SRCC e PLCC tra predizioni
+# e ground truth. Attualmente utilizza una predizione placeholder uguale al MOS
+# reale per verificare il corretto funzionamento della pipeline, del calcolo
+# delle metriche e del sistema di logging dei risultati.
+
+
 import sys
 from pathlib import Path
 

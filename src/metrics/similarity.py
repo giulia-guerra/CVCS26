@@ -1,3 +1,9 @@
+# Questo file contiene le funzioni utilizzate per confrontare le feature estratte
+# dalle immagini reference e distorted nella pipeline IQA. Implementa la
+# similarità coseno, che misura quanto due vettori di feature siano vicini nello
+# spazio delle rappresentazioni, la relativa distanza coseno e la distanza L2
+# (distanza euclidea) per quantificare la differenza tra le feature dei due input
+
 import torch
 import torch.nn.functional as F
 

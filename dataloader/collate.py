@@ -1,28 +1,29 @@
 import torch
 
 
-def iqc_collate(batch):
-    """
-    Collate function per dataset IQA.
-    Gestisce immagini di dimensione diversa.
-    """
+# Funzione di collate personalizzata per i dataset IQA Full-Reference.
+# Raggruppa nei batch le immagini reference e distorted insieme ai relativi MOS.
+# Mantiene le immagini nel formato richiesto dalla pipeline di feature extraction
+# e permette ai modelli (DINO, SigLIP) di ricevere coppie reference/distorted.
 
-    images = []
+
+def iqc_collate(batch):
+
+    ref_images = []
+    dist_images = []
     mos = []
     names = []
-    references = []
 
 
     for sample in batch:
 
-        image = sample["image"]
+        ref_images.append(
+            sample["ref_image"]
+        )
 
-        # converti numpy -> tensor
-        if not torch.is_tensor(image):
-            image = torch.tensor(image)
-
-        images.append(image)
-
+        dist_images.append(
+            sample["dist_image"]
+        )
 
         mos.append(
             torch.tensor(
@@ -31,27 +32,14 @@ def iqc_collate(batch):
             )
         )
 
-
-        # opzionali
         names.append(
             sample.get("name", None)
         )
 
-        references.append(
-            sample.get("reference", None)
-        )
-
-
-    # immagini con stessa dimensione
-    images = torch.stack(images)
-
-
-    mos = torch.stack(mos)
-
 
     return {
-        "image": images,
-        "mos": mos,
-        "name": names,
-        "reference": references
+        "ref_image": ref_images,
+        "dist_image": dist_images,
+        "mos": torch.stack(mos),
+        "name": names
     }

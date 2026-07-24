@@ -1,15 +1,9 @@
 import tempfile
 from pathlib import Path
-
 import numpy as np
-
 from PIL import Image
-
 from scipy.io import savemat
-
-
 from datasets.live import LIVEDataset
-
 
 
 def test_fake_live_dataset():

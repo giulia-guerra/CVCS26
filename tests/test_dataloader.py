@@ -1,24 +1,10 @@
 import tempfile
-
 from pathlib import Path
-
-
 import numpy as np
-
-
 from PIL import Image
-
-
 from scipy.io import savemat
-
-
 from torch.utils.data import DataLoader
-
-
-
 from datasets.live import LIVEDataset
-
-
 
 
 def test_fake_dataloader_live():

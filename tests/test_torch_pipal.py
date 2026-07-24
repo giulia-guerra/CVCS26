@@ -12,9 +12,7 @@ sys.path.insert(
 
 from torch.utils.data import DataLoader
 from torchvision import transforms
-
 from datasets.pipal import PIPALDataset
-
 
 
 DATASET_ROOT = (

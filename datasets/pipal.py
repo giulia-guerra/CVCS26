@@ -1,17 +1,22 @@
-from pathlib import Path
+# Dataset loader per PIPAL IQA Full-Reference.
+# Carica le immagini distorte dalla cartella Dist_Imgs e associa ogni immagine
+# alla relativa reference contenuta in Train_Ref tramite il nome del file.
+# I valori MOS vengono recuperati dai file di label presenti in Train_Label.
+# Restituisce coppie reference/distorted in formato PIL Image con il relativo MOS
+# per essere utilizzate dai modelli di estrazione feature.
 
+from pathlib import Path
 from .base_dataset import BaseDataset
 
 
-
 class PIPALDataset(BaseDataset):
-
 
     def __init__(
         self,
         root_dir,
         transform=None,
-        split="train"
+        split="train",
+        return_pil=True
     ):
 
         super().__init__(
@@ -19,142 +24,181 @@ class PIPALDataset(BaseDataset):
             transform
         )
 
-
         self.root_dir = Path(root_dir)
-
         self.split = split
+        self.return_pil = return_pil
 
         self.samples = []
-
 
         self._load_samples()
 
 
-
     def _load_samples(self):
 
+        if self.split == "train":
 
-        if self.split=="train":
-
-
-            img_dir = (
-                self.root_dir /
-                "Dist_Imgs"
-            )
-
-
-            ref_dir = (
-                self.root_dir /
-                "Train_Ref"
-            )
+            dist_dir = self.root_dir / "Dist_Imgs"
+            ref_dir = self.root_dir / "Train_Ref"
+            label_dir = self.root_dir / "Train_Label"
 
 
             images = sorted(
-                img_dir.rglob(
-                    "*.bmp"
-                )
+                dist_dir.glob("*.bmp")
             )
 
 
-            if len(images)==0:
+            for img in images:
 
-                images = sorted(
-                    img_dir.rglob(
-                        "*.png"
+                # esempio:
+                # A0130_02_08.bmp
+                # reference:
+                # A0130.bmp
+
+                ref_name = (
+                    img.stem.split("_")[0]
+                    + ".bmp"
+                )
+
+
+                ref_path = ref_dir / ref_name
+
+
+                if not ref_path.exists():
+
+                    print(
+                        "Reference mancante:",
+                        ref_path
                     )
+
+                    continue
+
+
+                # MOS
+                mos = 0.0
+
+
+                label_file = (
+                    label_dir /
+                    (img.stem.split("_")[0] + ".txt")
                 )
 
 
+                if label_file.exists():
 
-            labels = (
-                self.root_dir /
-                "Train_Label"
-            )
+                    with open(label_file) as f:
+
+                        lines = f.readlines()
+
+
+                    for line in lines:
+
+                        if img.stem in line:
+
+                            # formato PIPAL:
+                            # A0001_00_00.bmp,1520.0648
+
+                            value = line.strip().split(",")[-1]
+
+                            mos = float(value)
+
+                            break
+
+
+                self.samples.append(
+                    {
+                        "ref_image": ref_path,
+                        "dist_image": img,
+                        "mos": mos,
+                        "name": img.name
+                    }
+                )
 
 
 
         else:
 
-
-            img_dir = (
+            dist_dir = (
                 self.root_dir /
                 "Val_Dist"
             )
 
 
-            ref_dir = None
-
-
             images = sorted(
-                img_dir.rglob(
-                    "*"
-                )
-            )
-
-            images = [
-                x for x in images
-                if x.suffix.lower()
-                in [
-                    ".png",
-                    ".jpg",
-                    ".jpeg",
-                    ".bmp"
+                [
+                    x
+                    for x in dist_dir.rglob("*")
+                    if x.suffix.lower()
+                    in [
+                        ".bmp",
+                        ".png",
+                        ".jpg",
+                        ".jpeg"
+                    ]
                 ]
-            ]
-
-
-
-        for img in images:
-
-
-            self.samples.append(
-                {
-
-                    "image": img,
-
-                    "reference": None,
-
-                    "mos": 0.0
-
-                }
             )
 
 
+            for img in images:
 
-    def __getitem__(self, idx):
+                self.samples.append(
+                    {
+                        "ref_image": None,
+                        "dist_image": img,
+                        "mos": 0.0,
+                        "name": img.name
+                    }
+                )
 
+
+        print(
+            "PIPAL campioni caricati:",
+            len(self.samples)
+        )
+
+
+
+    def __len__(self):
+
+        return len(
+            self.samples
+        )
+
+
+
+    def __getitem__(
+        self,
+        idx
+    ):
 
         sample = self.samples[idx]
 
 
-        distorted = self.load_image(
-            sample["image"]
+        ref_img = self.load_image(
+            sample["ref_image"]
         )
 
 
-        distorted = self.apply_transform(
-            distorted
+        dist_img = self.load_image(
+            sample["dist_image"]
         )
+
+
+        if not self.return_pil and self.transform:
+
+            ref_img = self.transform(ref_img)
+
+            dist_img = self.transform(dist_img)
+
 
 
         return {
 
+            "ref_image": ref_img,
 
-    "image": distorted,
+            "dist_image": dist_img,
 
+            "mos": sample["mos"],
 
-    "distorted": distorted,
+            "name": sample["name"]
 
-
-    "reference": distorted,
-
-
-    "mos": sample["mos"],
-
-
-    "name": sample["image"].name,
-
-
-    "path": str(sample["image"])
-
-}
+        }

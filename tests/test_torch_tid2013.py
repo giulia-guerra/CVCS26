@@ -6,7 +6,6 @@ sys.path.insert(0, str(ROOT))
 
 
 from torch.utils.data import DataLoader
-
 from datasets.tid2013 import TID2013Dataset
 
 
