@@ -12,52 +12,84 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from torch.utils.data import DataLoader
+import torch
+import pandas as pd
 
-from datasets.live import LIVEDataset
 from src.metrics.metrics import srcc, plcc
-from src.utils.logger import CSVLogger
+from src.metrics.similarity import cosine_similarity, l2_distance
 
-DATASET_ROOT = "/work/cvcs2026/Cross_Entropy_Champions/datasets/LIVEIQA_release2"
+FEATURES_DIR = Path("/work/cvcs2026/Cross_Entropy_Champions/features/PIPAL")
+
+
+def evaluate_model(pt_file):
+    print(f"\n=== {pt_file.name} ===")
+
+    data = torch.load(pt_file, map_location="cpu")
+
+    ref_features = data["ref_features"]
+    dist_features = data["dist_features"]
+    mos = data["mos"]
+
+    # Ultimo layer
+    ref = ref_features[-1]
+    dist = dist_features[-1]
+
+    print("Ref shape :", ref.shape)
+    print("Dist shape:", dist.shape)
+
+    # Similarità coseno
+    cosine_scores = cosine_similarity(ref, dist)
+
+    # Distanza L2
+    l2_scores = l2_distance(ref, dist)
+
+    results = []
+
+    # Cosine
+    srcc_cos = srcc(cosine_scores, mos)
+    plcc_cos = plcc(cosine_scores, mos)
+
+    # L2 (segno invertito)
+    srcc_l2 = srcc(-l2_scores, mos)
+    plcc_l2 = plcc(-l2_scores, mos)
+
+    model_name = data["model_config"]
+
+    results.append({
+        "model": model_name,
+        "metric": "cosine",
+        "SRCC": srcc_cos,
+        "PLCC": plcc_cos
+    })
+
+    results.append({
+        "model": model_name,
+        "metric": "l2",
+        "SRCC": srcc_l2,
+        "PLCC": plcc_l2
+    })
+
+    print(f"Cosine -> SRCC={srcc_cos:.4f} PLCC={plcc_cos:.4f}")
+    print(f"L2     -> SRCC={srcc_l2:.4f} PLCC={plcc_l2:.4f}")
+
+    return results
 
 
 def main():
+    all_results = []
 
-    dataset = LIVEDataset(DATASET_ROOT)
+    for pt_file in FEATURES_DIR.glob("*.pt"):
+        all_results.extend(evaluate_model(pt_file))
 
-    loader = DataLoader(
-        dataset,
-        batch_size=32,
-        shuffle=False
-    )
+    df = pd.DataFrame(all_results)
 
-    mos_gt = []
-    mos_pred = []
+    output_csv = "phase1_pipal_results.csv"
+    df.to_csv(output_csv, index=False)
 
-    for batch in loader:
+    print("\n=== RISULTATI FINALI ===")
+    print(df)
 
-        gt = batch["mos"]
-
-        # Placeholder
-        pred = gt.clone()
-
-        mos_gt.extend(gt.tolist())
-        mos_pred.extend(pred.tolist())
-
-    srcc_score = srcc(mos_pred, mos_gt)
-    plcc_score = plcc(mos_pred, mos_gt)
-
-    print(f"SRCC : {srcc_score:.4f}")
-    print(f"PLCC : {plcc_score:.4f}")
-
-    logger = CSVLogger("results_phase1.csv")
-
-    logger.log(
-        epoch=0,
-        loss=0.0,
-        srcc=srcc_score,
-        plcc=plcc_score
-    )
+    print(f"\nCSV salvato in: {output_csv}")
 
 
 if __name__ == "__main__":
