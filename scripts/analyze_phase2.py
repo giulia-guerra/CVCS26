@@ -15,17 +15,32 @@ import pandas as pd
 from src.metrics.metrics import srcc, plcc
 from src.metrics.similarity import cosine_similarity
 
-FEATURES_DIR = Path("/work/cvcs2026/Cross_Entropy_Champions/features/PIPAL")
-
+# FEATURES_DIR = Path("/work/cvcs2026/Cross_Entropy_Champions/features/PIPAL")
+#FEATURES_DIR = Path("/work/cvcs2026/Cross_Entropy_Champions/features/LIVE")
+FEATURES_DIR = Path("/work/cvcs2026/Cross_Entropy_Champions/features/TID2013")
 
 def analyze_model(pt_file):
-    print(f"\nAnalizzo {pt_file.name}")
+    print(f"\n=== Analizzo {pt_file.name} ===")
 
     data = torch.load(pt_file, map_location="cpu")
+
+    print("Keys disponibili:", list(data.keys()))
 
     ref_features = data["ref_features"]
     dist_features = data["dist_features"]
     mos = data["mos"]
+
+    model_name = data.get(
+        "model_config",
+        data.get(
+            "model_name",
+            pt_file.stem.replace("_all_layers", "")
+        )
+    )
+
+    print(f"Modello: {model_name}")
+    print(f"Layers: {ref_features.shape[0]}")
+    print(f"Samples: {ref_features.shape[1]}")
 
     n_layers = ref_features.shape[0]
 
@@ -48,7 +63,7 @@ def analyze_model(pt_file):
         )
 
         results.append({
-            "model": data["model_config"],
+            "model": model_name,
             "layer": layer_idx,
             "srcc": layer_srcc,
             "plcc": layer_plcc
@@ -58,19 +73,31 @@ def analyze_model(pt_file):
 
 
 def main():
-
     all_results = []
 
-    for pt_file in FEATURES_DIR.glob("*.pt"):
-        all_results.extend(analyze_model(pt_file))
+    pt_files = sorted(FEATURES_DIR.glob("*.pt"))
+
+    print(f"Trovati {len(pt_files)} file .pt")
+
+    for pt_file in pt_files:
+        try:
+            all_results.extend(analyze_model(pt_file))
+        except Exception as e:
+            print(f"\nERRORE con {pt_file.name}")
+            print(e)
 
     df = pd.DataFrame(all_results)
 
-    output_file = "phase2_pipal_results.csv"
+    #output_file = "phase2_pipal_results.csv"
+    #output_file = "phase2_live_results.csv"
+    output_file = "phase2_tid2013_results.csv"
+
     df.to_csv(output_file, index=False)
 
-    print("\nRisultati salvati in:")
-    print(output_file)
+    print("\n=== RISULTATI SALVATI ===")
+    print(df.head())
+
+    print(f"\nCSV salvato in: {output_file}")
 
 
 if __name__ == "__main__":

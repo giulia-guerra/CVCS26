@@ -18,7 +18,9 @@ import pandas as pd
 from src.metrics.metrics import srcc, plcc
 from src.metrics.similarity import cosine_similarity, l2_distance
 
-FEATURES_DIR = Path("/work/cvcs2026/Cross_Entropy_Champions/features/PIPAL")
+# FEATURES_DIR = Path("/work/cvcs2026/Cross_Entropy_Champions/features/PIPAL")
+#FEATURES_DIR = Path("/work/cvcs2026/Cross_Entropy_Champions/features/LIVE")
+FEATURES_DIR = Path("/work/cvcs2026/Cross_Entropy_Champions/features/TID2013")
 
 
 def evaluate_model(pt_file):
@@ -26,64 +28,83 @@ def evaluate_model(pt_file):
 
     data = torch.load(pt_file, map_location="cpu")
 
+    print("Keys disponibili:", list(data.keys()))
+
     ref_features = data["ref_features"]
     dist_features = data["dist_features"]
     mos = data["mos"]
 
-    # Ultimo layer
+    # ultimo layer
     ref = ref_features[-1]
     dist = dist_features[-1]
 
     print("Ref shape :", ref.shape)
     print("Dist shape:", dist.shape)
+    print("MOS shape :", mos.shape)
 
-    # Similarità coseno
+    # cosine similarity
     cosine_scores = cosine_similarity(ref, dist)
 
-    # Distanza L2
+    # l2 distance
     l2_scores = l2_distance(ref, dist)
 
-    results = []
-
-    # Cosine
+    # correlazioni
     srcc_cos = srcc(cosine_scores, mos)
     plcc_cos = plcc(cosine_scores, mos)
 
-    # L2 (segno invertito)
     srcc_l2 = srcc(-l2_scores, mos)
     plcc_l2 = plcc(-l2_scores, mos)
 
-    model_name = data["model_config"]
+    # recupera il nome modello
+    model_name = data.get(
+        "model_config",
+        pt_file.stem.replace("_all_layers", "")
+    )
 
-    results.append({
-        "model": model_name,
-        "metric": "cosine",
-        "SRCC": srcc_cos,
-        "PLCC": plcc_cos
-    })
+    print(
+        f"Cosine -> SRCC={srcc_cos:.4f} "
+        f"PLCC={plcc_cos:.4f}"
+    )
 
-    results.append({
-        "model": model_name,
-        "metric": "l2",
-        "SRCC": srcc_l2,
-        "PLCC": plcc_l2
-    })
+    print(
+        f"L2     -> SRCC={srcc_l2:.4f} "
+        f"PLCC={plcc_l2:.4f}"
+    )
 
-    print(f"Cosine -> SRCC={srcc_cos:.4f} PLCC={plcc_cos:.4f}")
-    print(f"L2     -> SRCC={srcc_l2:.4f} PLCC={plcc_l2:.4f}")
-
-    return results
+    return [
+        {
+            "model": model_name,
+            "metric": "cosine",
+            "SRCC": srcc_cos,
+            "PLCC": plcc_cos,
+        },
+        {
+            "model": model_name,
+            "metric": "l2",
+            "SRCC": srcc_l2,
+            "PLCC": plcc_l2,
+        },
+    ]
 
 
 def main():
     all_results = []
 
-    for pt_file in FEATURES_DIR.glob("*.pt"):
-        all_results.extend(evaluate_model(pt_file))
+    pt_files = sorted(FEATURES_DIR.glob("*.pt"))
+
+    print(f"Trovati {len(pt_files)} file .pt")
+
+    for pt_file in pt_files:
+        try:
+            all_results.extend(evaluate_model(pt_file))
+        except Exception as e:
+            print(f"ERRORE con {pt_file.name}: {e}")
 
     df = pd.DataFrame(all_results)
 
-    output_csv = "phase1_pipal_results.csv"
+    #output_csv = "phase1_pipal_results.csv"
+    #output_csv = "phase1_live_results.csv"
+    output_csv = "phase1_tid2013_results.csv"
     df.to_csv(output_csv, index=False)
 
     print("\n=== RISULTATI FINALI ===")

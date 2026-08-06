@@ -10,7 +10,9 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent.parent
 
 # CSV generato da analyze_phase2.py
-CSV_FILE = ROOT / "phase2_pipal_results.csv"
+#CSV_FILE = ROOT / "phase2_pipal_results.csv"
+#CSV_FILE = ROOT / "phase2_live_results.csv"
+CSV_FILE = ROOT / "phase2_tid2013_results.csv"
 
 # Cartella output grafici
 PLOTS_DIR = ROOT / "results" / "phase2" / "plots"
@@ -61,14 +63,14 @@ def main():
     plot_metric(
         df,
         metric_col="srcc",
-        title="Layer vs SRCC (PIPAL)",
+        title="Layer vs SRCC (TID2013)",
         out_name="layer_vs_srcc.png"
     )
 
     plot_metric(
         df,
         metric_col="plcc",
-        title="Layer vs PLCC (PIPAL)",
+        title="Layer vs PLCC (TID2013)",
         out_name="layer_vs_plcc.png"
     )
 
