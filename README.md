@@ -28,10 +28,8 @@ The project successfully evaluated multiple vision encoder families across three
 
 ## Repository structure
 
-* configs/
 * dataloader/
 * datasets/
-* logs/
 * results/
 * scripts/
 * scripts_slurm/
