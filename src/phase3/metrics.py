@@ -1,3 +1,7 @@
+# Il codice implementa le metriche SRCC e PLCC per misurare la correlazione tra i MOS predetti dal modello e quelli reali. 
+# Controlla prima che ci siano abbastanza dati e che non siano costanti; in caso contrario restituisce NaN. 
+# Infine calcola e restituisce il valore della correlazione.
+
 import numpy as np
 from scipy.stats import spearmanr, pearsonr
 

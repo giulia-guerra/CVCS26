@@ -1,3 +1,7 @@
+# Il codice definisce un MLP (Multi-Layer Perceptron) per la regressione del MOS. 
+# Riceve le feature in input, le elabora attraverso due layer fully connected con ReLU e dropout 
+# e infine produce un singolo valore, cioè il MOS predetto per ogni immagine.
+
 import torch.nn as nn
 
 

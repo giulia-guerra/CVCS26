@@ -1,8 +1,13 @@
+# carica un modello MLP già addestrato (checkpoint), 
+# ricostruisce automaticamente il dataset e il layer utilizzati durante il training, 
+# rigenera lo stesso validation split tramite il seed salvato nel checkpoint 
+# e valuta le prestazioni del modello calcolando MSE, SRCC e PLCC.
+
+
 import argparse
 
 import torch
 from torch.utils.data import DataLoader, Subset
-
 from src.phase3.dataset import FeatureDataset
 from src.phase3.regressor import IQARegressor
 from src.phase3.evaluate import evaluate

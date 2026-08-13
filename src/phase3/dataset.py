@@ -1,3 +1,8 @@
+# FeatureDataset implementa il dataset utilizzato nella Fase 3 per il training supervisionato. 
+# Il codice carica le feature estratte dagli encoder salvate nei file .pt, seleziona il layer richiesto, 
+# costruisce il vettore di input come differenza assoluta tra le feature dell'immagine di riferimento e di quella distorta, 
+# e associa a ogni campione il relativo valore MOS da utilizzare come target durante l'addestramento.
+
 import torch
 from torch.utils.data import Dataset
 

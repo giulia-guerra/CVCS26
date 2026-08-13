@@ -1,3 +1,11 @@
+# Implementa il training supervisionato dell'MLP baseline per l'Image Quality Assessment. 
+# Il codice carica le feature estratte dagli encoder frozen, 
+# divide il dataset in training e validation set, normalizza feature e MOS, 
+# addestra un regressore MLP usando la loss MSE, monitora le metriche SRCC e PLCC sul validation set, 
+# salva automaticamente il miglior checkpoint e interrompe il training tramite early stopping 
+# quando le prestazioni non migliorano più.
+
+
 import argparse
 import csv
 import random

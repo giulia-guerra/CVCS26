@@ -1,3 +1,9 @@
+# Il codice valuta un modello già addestrato su un dataset: 
+# per ogni batch genera le predizioni del MOS a partire dalle feature, 
+# le confronta con i valori reali e calcola l’MSE. 
+# Al termine calcola anche SRCC e PLCC per misurare la correlazione tra predizioni e MOS reali, 
+# restituendo inoltre tutte le predizioni e i target.
+
 import torch
 from torch.utils.data import DataLoader
 

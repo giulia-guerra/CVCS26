@@ -1,4 +1,5 @@
 # scripts/extract_features.py
+
 import os
 import torch
 from src.models import VisionEncoder, MODEL_REGISTRY
