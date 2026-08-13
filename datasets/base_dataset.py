@@ -2,8 +2,8 @@
 # Fornisce funzionalità comuni come la gestione del percorso del dataset
 # e il caricamento delle immagini in formato PIL Image.
 # Viene utilizzata come classe padre dai loader LIVE, TID2013 e PIPAL.
-# from torch.utils.data import Dataset
 
+from torch.utils.data import Dataset
 
 from PIL import Image
 import torchvision.transforms as transforms

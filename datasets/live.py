@@ -58,14 +58,25 @@ class LIVEDataset(BaseDataset):
             "refnames_all"
         ].flatten()
 
-        distorted_images = sorted(
-            [
-                p
-                for p in self.root_dir.rglob("*.bmp")
-                if "refimgs" not in str(p)
-            ]
-        )
+        # L'array dmos_new nel file .mat è strutturato concatenando le immagini 
+        # cartella per cartella nel seguente ordine esatto:
+        degradation_folders = ["jp2k", "jpeg", "wn", "gblur", "fastfading"]
 
+        distorted_images = []
+        
+        for folder in degradation_folders:
+            folder_path = self.root_dir / folder
+            if not folder_path.exists():
+                raise FileNotFoundError(f"Cartella mancante nel dataset LIVE: {folder_path}")
+            
+            # Prendi solo i file che iniziano con img
+            imgs = list(folder_path.glob("img*.bmp"))
+            
+            # Ordina numericamente all'interno della singola cartella
+            imgs_sorted = sorted(imgs, key=lambda p: int(p.stem.replace("img", "")))
+            
+            distorted_images.extend(imgs_sorted)
+        
         print(
             "Immagini distorte LIVE trovate:",
             len(distorted_images)

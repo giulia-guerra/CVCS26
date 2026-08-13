@@ -1,1 +1,0 @@
-# Script principale per la Fase 1 e 2
