@@ -5,6 +5,7 @@
 
 import sys
 from pathlib import Path
+import torch.nn.functional as F
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -15,7 +16,7 @@ import pandas as pd
 from src.metrics.metrics import srcc, plcc
 from src.metrics.similarity import cosine_similarity
 
-# FEATURES_DIR = Path("/work/cvcs2026/Cross_Entropy_Champions/features/PIPAL")
+#FEATURES_DIR = Path("/work/cvcs2026/Cross_Entropy_Champions/features/PIPAL")
 #FEATURES_DIR = Path("/work/cvcs2026/Cross_Entropy_Champions/features/LIVE")
 FEATURES_DIR = Path("/work/cvcs2026/Cross_Entropy_Champions/features/TID2013")
 
@@ -53,8 +54,8 @@ def analyze_model(pt_file):
 
         scores = cosine_similarity(ref, dist)
 
-        layer_srcc = srcc(scores, mos)
-        layer_plcc = plcc(scores, mos)
+        layer_srcc = abs(srcc(scores, mos))
+        layer_plcc = abs(plcc(scores, mos))
 
         print(
             f"Layer {layer_idx:02d} | "
@@ -69,6 +70,28 @@ def analyze_model(pt_file):
             "plcc": layer_plcc
         })
 
+    # NOVITÀ: Valutazione Media di tutti i layer
+    # ref_features e dist_features hanno shape [n_layers, n_samples, features_dim]
+    mean_ref = ref_features.mean(dim=0)   # shape diventa [n_samples, features_dim]
+    mean_dist = dist_features.mean(dim=0)
+    
+    # IMPORTANTE: Ri-normalizzare le feature dopo la media
+    mean_ref = F.normalize(mean_ref, p=2, dim=-1)
+    mean_dist = F.normalize(mean_dist, p=2, dim=-1)
+    
+    mean_scores = cosine_similarity(mean_ref, mean_dist)
+    mean_srcc = abs(srcc(mean_scores, mos))
+    mean_plcc = abs(plcc(mean_scores, mos))
+    
+    print(f"Media di tutti i layer | SRCC={mean_srcc:.4f} | PLCC={mean_plcc:.4f}")
+    
+    results.append({
+        "model": model_name,
+        "layer": "mean",  # Usiamo la stringa "mean" per distinguerlo nel CSV
+        "srcc": mean_srcc,
+        "plcc": mean_plcc
+    })
+    
     return results
 
 
