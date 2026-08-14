@@ -1,9 +1,3 @@
-# è lo script SLURM utilizzato per eseguire il training della Fase 3 sul cluster GPU. 
-# Configura le risorse richieste (GPU, CPU, memoria e tempo massimo), 
-# attiva l'ambiente Python del progetto, verifica la disponibilità di CUDA e della GPU, 
-# e lancia il training dell'MLP baseline tramite train_phase3.py con i parametri sperimentali selezionati.
-
-
 #!/bin/bash
 
 #SBATCH --job-name=cvcs26_phase3
@@ -82,3 +76,8 @@ echo "PHASE 3 FINISHED"
 echo "========================================"
 
 date
+
+# è lo script SLURM utilizzato per eseguire il training della Fase 3 sul cluster GPU. 
+# Configura le risorse richieste (GPU, CPU, memoria e tempo massimo), 
+# attiva l'ambiente Python del progetto, verifica la disponibilità di CUDA e della GPU, 
+# e lancia il training dell'MLP baseline tramite train_phase3.py con i parametri sperimentali selezionati.

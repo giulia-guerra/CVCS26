@@ -17,6 +17,7 @@ import torch
 from torch import nn
 from torch.utils.data import Dataset, DataLoader
 
+
 # ============================================================
 # PROJECT ROOT
 # ============================================================
@@ -43,16 +44,35 @@ def set_seed(seed):
 
 
 # ============================================================
-# SPLIT
+# TRAIN / VALIDATION SPLIT
 # ============================================================
 
 def train_val_split(n, val_ratio, seed):
-    g = torch.Generator().manual_seed(seed)
-    indices = torch.randperm(n, generator=g).tolist()
+
+    if not 0 < val_ratio < 1:
+        raise ValueError(
+            "val_ratio must be between 0 and 1."
+        )
+
+    generator = torch.Generator().manual_seed(seed)
+
+    indices = torch.randperm(
+        n,
+        generator=generator
+    ).tolist()
 
     val_size = int(n * val_ratio)
 
-    return indices[val_size:], indices[:val_size]
+    if val_size == 0 or val_size == n:
+        raise ValueError(
+            f"Invalid validation size: {val_size} "
+            f"for dataset of size {n}."
+        )
+
+    train_indices = indices[val_size:]
+    val_indices = indices[:val_size]
+
+    return train_indices, val_indices
 
 
 # ============================================================
@@ -70,6 +90,7 @@ class NormalizedDataset(Dataset):
         mos_mean,
         mos_std,
     ):
+
         self.dataset = dataset
         self.indices = indices
 
@@ -82,13 +103,20 @@ class NormalizedDataset(Dataset):
         return len(self.indices)
 
     def __getitem__(self, i):
+
         idx = self.indices[i]
 
         x = self.dataset.features[idx]
         y = self.dataset.mos[idx]
 
-        x = (x - self.feature_mean) / self.feature_std
-        y = (y - self.mos_mean) / self.mos_std
+        # Normalize using TRAINING statistics
+        x = (
+            x - self.feature_mean
+        ) / self.feature_std
+
+        y = (
+            y - self.mos_mean
+        ) / self.mos_std
 
         return {
             "features": x,
@@ -105,17 +133,20 @@ def get_stats(dataset, train_indices):
     x = dataset.features[train_indices]
     y = dataset.mos[train_indices]
 
+    # Compute statistics ONLY on training samples
     feature_mean = x.mean(dim=0)
     feature_std = x.std(dim=0)
 
-    # Avoid division by zero
+    # Avoid division by zero for constant features
     feature_std[feature_std < 1e-8] = 1.0
 
     mos_mean = y.mean()
     mos_std = y.std()
 
     if mos_std < 1e-8:
-        raise ValueError("MOS standard deviation is too small.")
+        raise ValueError(
+            "MOS standard deviation is too small."
+        )
 
     return (
         feature_mean,
@@ -126,7 +157,7 @@ def get_stats(dataset, train_indices):
 
 
 # ============================================================
-# TRAIN
+# TRAIN ONE EPOCH
 # ============================================================
 
 def train_one_epoch(
@@ -140,7 +171,7 @@ def train_one_epoch(
     model.train()
 
     total_loss = 0.0
-    total_n = 0
+    total_samples = 0
 
     for batch in loader:
 
@@ -149,19 +180,31 @@ def train_one_epoch(
 
         optimizer.zero_grad()
 
-        pred = model(x)
+        predictions = model(x)
 
-        loss = criterion(pred, y)
+        loss = criterion(
+            predictions,
+            y
+        )
 
         loss.backward()
+
         optimizer.step()
 
-        n = y.size(0)
+        batch_size = y.size(0)
 
-        total_loss += loss.item() * n
-        total_n += n
+        total_loss += (
+            loss.item() * batch_size
+        )
 
-    return total_loss / total_n
+        total_samples += batch_size
+
+    if total_samples == 0:
+        raise RuntimeError(
+            "Training loader is empty."
+        )
+
+    return total_loss / total_samples
 
 
 # ============================================================
@@ -187,27 +230,61 @@ def evaluate(
         x = batch["features"].to(device)
         y_norm = batch["mos"].to(device)
 
+        # Model predicts normalized MOS
         pred_norm = model(x)
 
-        # Back to original MOS scale
-        pred = pred_norm * mos_std.to(device) + mos_mean.to(device)
-        y = y_norm * mos_std.to(device) + mos_mean.to(device)
+        # Convert predictions back to original MOS scale
+        pred = (
+            pred_norm * mos_std.to(device)
+            + mos_mean.to(device)
+        )
 
-        predictions.extend(pred.cpu().numpy())
-        targets.extend(y.cpu().numpy())
+        # Convert ground truth back to original MOS scale
+        y = (
+            y_norm * mos_std.to(device)
+            + mos_mean.to(device)
+        )
+
+        predictions.extend(
+            pred.cpu().numpy()
+        )
+
+        targets.extend(
+            y.cpu().numpy()
+        )
 
     predictions = np.asarray(predictions)
     targets = np.asarray(targets)
 
-    mse = np.mean((predictions - targets) ** 2)
-    correlation_srcc = srcc(predictions, targets)
-    correlation_plcc = plcc(predictions, targets)
+    if len(predictions) == 0:
+        raise RuntimeError(
+            "Validation loader is empty."
+        )
 
-    return mse, correlation_srcc, correlation_plcc
+    # MSE on original MOS scale
+    mse = np.mean(
+        (predictions - targets) ** 2
+    )
+
+    correlation_srcc = srcc(
+        predictions,
+        targets
+    )
+
+    correlation_plcc = plcc(
+        predictions,
+        targets
+    )
+
+    return (
+        mse,
+        correlation_srcc,
+        correlation_plcc,
+    )
 
 
 # ============================================================
-# SAVE HISTORY
+# SAVE TRAINING HISTORY
 # ============================================================
 
 def save_history(history, path):
@@ -217,7 +294,11 @@ def save_history(history, path):
         exist_ok=True
     )
 
-    with open(path, "w", newline="") as f:
+    with open(
+        path,
+        "w",
+        newline=""
+    ) as f:
 
         writer = csv.DictWriter(
             f,
@@ -241,19 +322,32 @@ def save_history(history, path):
 def main():
 
     parser = argparse.ArgumentParser(
-        description="Phase 3 supervised IQA training"
+        description=(
+            "Phase 3 supervised IQA training "
+            "with an MLP regressor."
+        )
     )
+
+    # --------------------------------------------------------
+    # Dataset
+    # --------------------------------------------------------
 
     parser.add_argument(
         "--features",
         required=True,
+        help="Path to the .pt feature file."
     )
 
     parser.add_argument(
         "--layer",
         type=int,
         required=True,
+        help="Feature layer used for training."
     )
+
+    # --------------------------------------------------------
+    # Training
+    # --------------------------------------------------------
 
     parser.add_argument(
         "--epochs",
@@ -279,6 +373,10 @@ def main():
         default=1e-4,
     )
 
+    # --------------------------------------------------------
+    # MLP
+    # --------------------------------------------------------
+
     parser.add_argument(
         "--hidden-dim",
         type=int,
@@ -291,6 +389,10 @@ def main():
         default=0.2,
     )
 
+    # --------------------------------------------------------
+    # Validation
+    # --------------------------------------------------------
+
     parser.add_argument(
         "--val-ratio",
         type=float,
@@ -298,17 +400,25 @@ def main():
     )
 
     parser.add_argument(
+        "--patience",
+        type=int,
+        default=7,
+        help="Early stopping patience."
+    )
+
+    # --------------------------------------------------------
+    # Reproducibility
+    # --------------------------------------------------------
+
+    parser.add_argument(
         "--seed",
         type=int,
         default=42,
     )
 
-    parser.add_argument(
-        "--patience",
-        type=int,
-        default=7,
-        help="Early stopping patience",
-    )
+    # --------------------------------------------------------
+    # Output
+    # --------------------------------------------------------
 
     parser.add_argument(
         "--output-dir",
@@ -317,14 +427,16 @@ def main():
 
     args = parser.parse_args()
 
-    # --------------------------------------------------------
-    # Setup
-    # --------------------------------------------------------
+    # ========================================================
+    # SETUP
+    # ========================================================
 
     set_seed(args.seed)
 
     device = torch.device(
-        "cuda" if torch.cuda.is_available() else "cpu"
+        "cuda"
+        if torch.cuda.is_available()
+        else "cpu"
     )
 
     print("=" * 65)
@@ -342,11 +454,11 @@ def main():
     print(f"Dropout:        {args.dropout}")
     print(f"Val ratio:      {args.val_ratio}")
     print(f"Patience:       {args.patience}")
-    print(f"Seed:           {args.seed}")
+    print(f"Seed:            {args.seed}")
 
-    # --------------------------------------------------------
-    # Dataset
-    # --------------------------------------------------------
+    # ========================================================
+    # DATASET
+    # ========================================================
 
     dataset = FeatureDataset(
         pt_path=args.features,
@@ -354,13 +466,22 @@ def main():
     )
 
     print("\nDataset:")
-    print(f"  Model:       {dataset.model_config}")
-    print(f"  Samples:     {len(dataset)}")
-    print(f"  Feature dim: {dataset.features.shape[1]}")
+    print(
+        f"  Model:       "
+        f"{dataset.model_config}"
+    )
+    print(
+        f"  Samples:     "
+        f"{len(dataset)}"
+    )
+    print(
+        f"  Feature dim: "
+        f"{dataset.features.shape[1]}"
+    )
 
-    # --------------------------------------------------------
-    # Split
-    # --------------------------------------------------------
+    # ========================================================
+    # TRAIN / VALIDATION SPLIT
+    # ========================================================
 
     train_idx, val_idx = train_val_split(
         len(dataset),
@@ -369,12 +490,16 @@ def main():
     )
 
     print("\nSplit:")
-    print(f"  Train: {len(train_idx)}")
-    print(f"  Val:   {len(val_idx)}")
+    print(
+        f"  Train: {len(train_idx)}"
+    )
+    print(
+        f"  Val:   {len(val_idx)}"
+    )
 
-    # --------------------------------------------------------
-    # Normalization
-    # --------------------------------------------------------
+    # ========================================================
+    # NORMALIZATION
+    # ========================================================
 
     (
         feature_mean,
@@ -387,37 +512,49 @@ def main():
     )
 
     print("\nNormalization:")
-    print(f"  MOS mean: {mos_mean.item():.4f}")
-    print(f"  MOS std:  {mos_std.item():.4f}")
+    print(
+        f"  MOS mean: "
+        f"{mos_mean.item():.4f}"
+    )
+    print(
+        f"  MOS std:  "
+        f"{mos_std.item():.4f}"
+    )
+
+    # ========================================================
+    # NORMALIZED DATASETS
+    # ========================================================
 
     train_dataset = NormalizedDataset(
-        dataset,
-        train_idx,
-        feature_mean,
-        feature_std,
-        mos_mean,
-        mos_std,
+        dataset=dataset,
+        indices=train_idx,
+        feature_mean=feature_mean,
+        feature_std=feature_std,
+        mos_mean=mos_mean,
+        mos_std=mos_std,
     )
 
     val_dataset = NormalizedDataset(
-        dataset,
-        val_idx,
-        feature_mean,
-        feature_std,
-        mos_mean,
-        mos_std,
+        dataset=dataset,
+        indices=val_idx,
+        feature_mean=feature_mean,
+        feature_std=feature_std,
+        mos_mean=mos_mean,
+        mos_std=mos_std,
     )
 
-    # --------------------------------------------------------
-    # DataLoaders
-    # --------------------------------------------------------
+    # ========================================================
+    # DATALOADERS
+    # ========================================================
+
+    use_cuda = torch.cuda.is_available()
 
     train_loader = DataLoader(
         train_dataset,
         batch_size=args.batch_size,
         shuffle=True,
         num_workers=0,
-        pin_memory=torch.cuda.is_available(),
+        pin_memory=use_cuda,
     )
 
     val_loader = DataLoader(
@@ -425,12 +562,12 @@ def main():
         batch_size=args.batch_size,
         shuffle=False,
         num_workers=0,
-        pin_memory=torch.cuda.is_available(),
+        pin_memory=use_cuda,
     )
 
-    # --------------------------------------------------------
-    # Model
-    # --------------------------------------------------------
+    # ========================================================
+    # MODEL
+    # ========================================================
 
     input_dim = dataset.features.shape[1]
 
@@ -443,9 +580,9 @@ def main():
     print("\nModel:")
     print(model)
 
-    # --------------------------------------------------------
-    # Loss / Optimizer
-    # --------------------------------------------------------
+    # ========================================================
+    # LOSS / OPTIMIZER
+    # ========================================================
 
     criterion = nn.MSELoss()
 
@@ -455,29 +592,40 @@ def main():
         weight_decay=args.weight_decay,
     )
 
-    # --------------------------------------------------------
-    # Output
-    # --------------------------------------------------------
+    # ========================================================
+    # OUTPUT
+    # ========================================================
 
-    output_dir = Path(args.output_dir)
+    output_dir = Path(
+        args.output_dir
+    )
+
     output_dir.mkdir(
         parents=True,
-        exist_ok=True,
+        exist_ok=True
     )
 
-    checkpoint = (
+    checkpoint_path = (
         output_dir
-        / f"best_{dataset.model_config}_layer{args.layer}.pt"
+        / (
+            f"best_"
+            f"{dataset.model_config}"
+            f"_layer{args.layer}.pt"
+        )
     )
 
-    history_file = (
+    history_path = (
         output_dir
-        / f"history_{dataset.model_config}_layer{args.layer}.csv"
+        / (
+            f"history_"
+            f"{dataset.model_config}"
+            f"_layer{args.layer}.csv"
+        )
     )
 
-    # --------------------------------------------------------
-    # Training loop
-    # --------------------------------------------------------
+    # ========================================================
+    # TRAINING LOOP
+    # ========================================================
 
     best_srcc = -float("inf")
     best_epoch = 0
@@ -485,23 +633,42 @@ def main():
 
     history = []
 
-    for epoch in range(1, args.epochs + 1):
+    for epoch in range(
+        1,
+        args.epochs + 1
+    ):
+
+        # ----------------------------------------------------
+        # Training
+        # ----------------------------------------------------
 
         train_loss = train_one_epoch(
-            model,
-            train_loader,
-            optimizer,
-            criterion,
-            device,
+            model=model,
+            loader=train_loader,
+            optimizer=optimizer,
+            criterion=criterion,
+            device=device,
         )
 
-        val_mse, val_srcc, val_plcc = evaluate(
-            model,
-            val_loader,
-            device,
-            mos_mean,
-            mos_std,
+        # ----------------------------------------------------
+        # Validation
+        # ----------------------------------------------------
+
+        (
+            val_mse,
+            val_srcc,
+            val_plcc,
+        ) = evaluate(
+            model=model,
+            loader=val_loader,
+            device=device,
+            mos_mean=mos_mean,
+            mos_std=mos_std,
         )
+
+        # ----------------------------------------------------
+        # History
+        # ----------------------------------------------------
 
         history.append({
             "epoch": epoch,
@@ -510,6 +677,10 @@ def main():
             "val_srcc": val_srcc,
             "val_plcc": val_plcc,
         })
+
+        # ----------------------------------------------------
+        # Logging
+        # ----------------------------------------------------
 
         print(
             f"Epoch {epoch:03d}/{args.epochs} | "
@@ -520,10 +691,13 @@ def main():
         )
 
         # ----------------------------------------------------
-        # Best model
+        # Best checkpoint
         # ----------------------------------------------------
 
-        if not np.isnan(val_srcc) and val_srcc > best_srcc:
+        if (
+            not np.isnan(val_srcc)
+            and val_srcc > best_srcc
+        ):
 
             best_srcc = val_srcc
             best_epoch = epoch
@@ -531,30 +705,56 @@ def main():
 
             torch.save(
                 {
+                    # Training state
                     "epoch": epoch,
-                    "model_state_dict": model.state_dict(),
-                    "optimizer_state_dict": optimizer.state_dict(),
+                    "model_state_dict":
+                        model.state_dict(),
+                    "optimizer_state_dict":
+                        optimizer.state_dict(),
 
-                    "model_config": dataset.model_config,
-                    "layer": args.layer,
+                    # Dataset / model
+                    "model_config":
+                        dataset.model_config,
+                    "layer":
+                        args.layer,
+                    "input_dim":
+                        input_dim,
+                    "hidden_dim":
+                        args.hidden_dim,
+                    "dropout":
+                        args.dropout,
 
-                    "input_dim": input_dim,
-                    "hidden_dim": args.hidden_dim,
-                    "dropout": args.dropout,
+                    # Performance
+                    "best_srcc":
+                        val_srcc,
+                    "best_plcc":
+                        val_plcc,
+                    "val_mse":
+                        val_mse,
 
-                    "best_srcc": val_srcc,
-                    "best_plcc": val_plcc,
-                    "val_mse": val_mse,
+                    # Reproducibility
+                    "seed":
+                        args.seed,
+                    "val_ratio":
+                        args.val_ratio,
 
-                    "seed": args.seed,
+                    # EXACT split used
+                    "train_indices":
+                        train_idx,
+                    "val_indices":
+                        val_idx,
 
-                    # Normalization
-                    "feature_mean": feature_mean,
-                    "feature_std": feature_std,
-                    "mos_mean": mos_mean,
-                    "mos_std": mos_std,
+                    # Normalization statistics
+                    "feature_mean":
+                        feature_mean,
+                    "feature_std":
+                        feature_std,
+                    "mos_mean":
+                        mos_mean,
+                    "mos_std":
+                        mos_std,
                 },
-                checkpoint,
+                checkpoint_path,
             )
 
             print(
@@ -563,43 +763,63 @@ def main():
             )
 
         else:
+
             epochs_without_improvement += 1
 
         # ----------------------------------------------------
         # Early stopping
         # ----------------------------------------------------
 
-        if epochs_without_improvement >= args.patience:
+        if (
+            epochs_without_improvement
+            >= args.patience
+        ):
 
             print(
-                f"\nEarly stopping at epoch {epoch} "
+                f"\nEarly stopping at epoch "
+                f"{epoch} "
                 f"(no improvement for "
                 f"{args.patience} epochs)."
             )
 
             break
 
-    # --------------------------------------------------------
-    # Save history
-    # --------------------------------------------------------
+    # ========================================================
+    # SAVE HISTORY
+    # ========================================================
 
     save_history(
         history,
-        history_file,
+        history_path,
     )
 
-    # --------------------------------------------------------
-    # Summary
-    # --------------------------------------------------------
+    # ========================================================
+    # SUMMARY
+    # ========================================================
 
     print("\n" + "=" * 65)
     print("TRAINING FINISHED")
     print("=" * 65)
 
-    print(f"Best epoch:    {best_epoch}")
-    print(f"Best Val SRCC: {best_srcc:.6f}")
-    print(f"Checkpoint:    {checkpoint}")
-    print(f"History:       {history_file}")
+    print(
+        f"Best epoch:    "
+        f"{best_epoch}"
+    )
+
+    print(
+        f"Best Val SRCC: "
+        f"{best_srcc:.6f}"
+    )
+
+    print(
+        f"Checkpoint:    "
+        f"{checkpoint_path}"
+    )
+
+    print(
+        f"History:       "
+        f"{history_path}"
+    )
 
 
 # ============================================================

@@ -4,7 +4,7 @@ Computer Vision and Cognitive Systems Project 2026
 
 ## Team Contributions
 
-Antonio D'agata, matricola 
+Antonio D'agata, matricola 218794
 Giulia Guerra,   matricola 214065 
 
 ### Data Pipeline and Evaluation
