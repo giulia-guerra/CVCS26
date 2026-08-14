@@ -10,9 +10,9 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent.parent
 
 # CSV generato da analyze_phase2.py
-CSV_FILE = ROOT / "phase2_pipal_results.csv"
-#CSV_FILE = ROOT / "phase2_live_results.csv"
-#CSV_FILE = ROOT / "phase2_tid2013_results.csv"
+#CSV_FILE = ROOT /"results" / "phase2" / "phase2_pipal_results.csv"
+CSV_FILE = ROOT / "results" / "phase2" / "phase2_live_results.csv"
+#CSV_FILE = ROOT / "results" / "phase2" / "phase2_tid2013_results.csv"
 
 # Cartella output grafici
 PLOTS_DIR = ROOT / "results" / "phase2" / "plots"

@@ -17,8 +17,8 @@ from src.metrics.metrics import srcc, plcc
 from src.metrics.similarity import cosine_similarity
 
 #FEATURES_DIR = Path("/work/cvcs2026/Cross_Entropy_Champions/features/PIPAL")
-#FEATURES_DIR = Path("/work/cvcs2026/Cross_Entropy_Champions/features/LIVE")
-FEATURES_DIR = Path("/work/cvcs2026/Cross_Entropy_Champions/features/TID2013")
+FEATURES_DIR = Path("/work/cvcs2026/Cross_Entropy_Champions/features/LIVE")
+#FEATURES_DIR = Path("/work/cvcs2026/Cross_Entropy_Champions/features/TID2013")
 
 def analyze_model(pt_file):
     print(f"\n=== Analizzo {pt_file.name} ===")
@@ -112,8 +112,8 @@ def main():
     df = pd.DataFrame(all_results)
 
     #output_file = "phase2_pipal_results.csv"
-    #output_file = "phase2_live_results.csv"
-    output_file = "phase2_tid2013_results.csv"
+    output_file = "phase2_live_results.csv"
+    #output_file = "phase2_tid2013_results.csv"
 
     df.to_csv(output_file, index=False)
 
