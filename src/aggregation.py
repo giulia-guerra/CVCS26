@@ -1,1 +1,0 @@
-# Moduli della Fase 3 (MLP, Cross-Attention)
