@@ -89,6 +89,17 @@ def load_data():
         subset=["best_layer", "srcc"]
     )
 
+    # ========================================================
+    # Normalize model names across datasets
+    # ========================================================
+
+    model_mapping = {
+        "dinov2_small": "facebook/dinov2-small",
+        "siglip2_base": "google/siglip2-base-patch16-224",
+    }
+
+    df["model"] = df["model"].replace(model_mapping)
+
     return df
 
 
