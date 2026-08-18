@@ -2,106 +2,380 @@
 import torch
 import torch.nn as nn
 
+
+# ============================================================
+# IQA FEATURE AGGREGATOR
+# ============================================================
+
 class IQAFeatureAggregator(nn.Module):
     """
-    Modulo MLP per l'ablazione (Punto 4.5).
-    Permette di testare architetture di dimensioni diverse passando il parametro 'variant'.
+    MLP regressor used for Phase 3.
+
+    Input:
+        Concatenated absolute difference between
+        reference and distorted features from:
+
+            - SigLIP2 Base
+            - SigLIP2 Large
+
+    Input shape:
+        [batch_size, input_dim]
+
+    Output:
+        Predicted normalized MOS
+        [batch_size]
     """
-    def __init__(self, input_dim, variant="medium"):
+
+    def __init__(
+        self,
+        input_dim,
+        variant="medium",
+    ):
         super().__init__()
-        
+
         self.variant = variant
-        
+
+        # ----------------------------------------------------
+        # SMALL
+        # ----------------------------------------------------
+
         if variant == "small":
-            # Baseline leggerissima per evitare overfitting
+
             self.mlp = nn.Sequential(
-                nn.Linear(input_dim, 128),
+                nn.Linear(
+                    input_dim,
+                    128,
+                ),
                 nn.ReLU(),
-                nn.Dropout(p=0.4),
-                nn.Linear(128, 1)
+                nn.Dropout(
+                    p=0.4
+                ),
+                nn.Linear(
+                    128,
+                    1,
+                ),
             )
-            
+
+        # ----------------------------------------------------
+        # MEDIUM
+        # ----------------------------------------------------
+
         elif variant == "medium":
-            # Baseline standard (Quella da usare come riferimento principale)
+
             self.mlp = nn.Sequential(
-                nn.Linear(input_dim, 256),
+                nn.Linear(
+                    input_dim,
+                    256,
+                ),
                 nn.ReLU(),
-                nn.Dropout(p=0.4),
-                nn.Linear(256, 64),
+                nn.Dropout(
+                    p=0.4
+                ),
+                nn.Linear(
+                    256,
+                    64,
+                ),
                 nn.ReLU(),
-                nn.Dropout(p=0.2),
-                nn.Linear(64, 1)
+                nn.Dropout(
+                    p=0.2
+                ),
+                nn.Linear(
+                    64,
+                    1,
+                ),
             )
-            
+
+        # ----------------------------------------------------
+        # LARGE
+        # ----------------------------------------------------
+
         elif variant == "large":
-            # Multi-Layer MLP profondo (Punto 4.5)
+
             self.mlp = nn.Sequential(
-                nn.Linear(input_dim, 512),
+                nn.Linear(
+                    input_dim,
+                    512,
+                ),
                 nn.ReLU(),
-                nn.Dropout(p=0.5),
-                nn.Linear(512, 128),
+                nn.Dropout(
+                    p=0.5
+                ),
+                nn.Linear(
+                    512,
+                    128,
+                ),
                 nn.ReLU(),
-                nn.Dropout(p=0.3),
-                nn.Linear(128, 32),
+                nn.Dropout(
+                    p=0.3
+                ),
+                nn.Linear(
+                    128,
+                    32,
+                ),
                 nn.ReLU(),
-                nn.Linear(32, 1)
+                nn.Linear(
+                    32,
+                    1,
+                ),
             )
+
         else:
-            raise ValueError("variant deve essere 'small', 'medium', o 'large'")
 
-    def forward(self, ref_features, dist_features):
-        """
-        ref_features e dist_features sono tensori bidimensionali (già flattened):
-        Shape: [batch_size, input_dim]
-        """
-        # TECNICA IQA STANDARD: Calcolo della differenza assoluta.
-        # Spinge la rete a concentrarsi su "cosa è cambiato" rispetto alla reference.
-        diff = torch.abs(ref_features - dist_features)
-        
-        # Facoltativo (ma consigliato in IQA): puoi anche calcolare il prodotto element-wise
-        # mult = ref_features * dist_features
-        # e poi concatenarli: diff = torch.cat([diff, mult], dim=1) -> *Richiede di raddoppiare input_dim
-        
-        score = self.mlp(diff)
-        return score.squeeze(-1) # Da [batch_size, 1] a [batch_size]
+            raise ValueError(
+                "variant must be "
+                "'small', 'medium', or 'large'"
+            )
 
+    # ========================================================
+    # FORWARD
+    # ========================================================
+
+    def forward(
+        self,
+        ref_features,
+        dist_features,
+    ):
+        """
+        Compute absolute feature difference and
+        predict MOS.
+
+        Expected input:
+
+            ref_features:
+                [batch_size, input_dim]
+
+            dist_features:
+                [batch_size, input_dim]
+
+        Returns:
+
+            [batch_size]
+        """
+
+        # ----------------------------------------------------
+        # Absolute reference-distorted difference
+        # ----------------------------------------------------
+
+        diff = torch.abs(
+            ref_features - dist_features
+        )
+
+        # ----------------------------------------------------
+        # MLP regression
+        # ----------------------------------------------------
+
+        score = self.mlp(
+            diff
+        )
+
+        # [batch, 1] -> [batch]
+        return score.squeeze(-1)
+
+
+# ============================================================
+# DUAL ENCODER FUSION
+# ============================================================
 
 class DualEncoderFusion(nn.Module):
     """
-    Modulo finale da richiamare nel Training Loop.
-    Gestisce la fusione dei due modelli vincitori della Fase 1.
-    """
-    def __init__(self, dim_base=9984, dim_large=25600, variant="medium"):
-        # dim_base = 13 layer * 768 (shape di siglip2_base_all_layers)
-        # dim_large = N layer * dim (devi verificare la shape esatta del tuo siglip2_large)
-        super().__init__()
-        
-        # La dimensione di input totale sarà la somma delle feature appiattite dei due modelli
-        total_input_dim = dim_base + dim_large
-        
-        print(f"Inizializzazione DualEncoderFusion (Variant: {variant})")
-        print(f"Input features totali: {total_input_dim}")
-        
-        self.aggregator = IQAFeatureAggregator(input_dim=total_input_dim, variant=variant)
+    Dual-encoder fusion model for Phase 3.
 
-    def forward(self, ref_base, dist_base, ref_large, dist_large):
+    The model receives all layers from:
+
+        - SigLIP2 Base
+        - SigLIP2 Large
+
+    For each encoder:
+
+        reference
+            +
+        distorted
+
+    features are flattened and concatenated.
+
+    Then the absolute difference between the
+    reference and distorted representations is
+    computed and passed to an MLP regressor.
+
+    Example for PIPAL:
+
+        Base:
+            [batch, 13, 768]
+
+        Large:
+            [batch, 25, 1024]
+
+        Base flattened:
+            13 * 768 = 9984
+
+        Large flattened:
+            25 * 1024 = 25600
+
+        Total:
+            9984 + 25600 = 35584
+    """
+
+    def __init__(
+        self,
+        dim_base,
+        dim_large,
+        variant="medium",
+    ):
+        super().__init__()
+
+        self.dim_base = dim_base
+        self.dim_large = dim_large
+        self.variant = variant
+
+        # ----------------------------------------------------
+        # Total input dimension
+        # ----------------------------------------------------
+
+        total_input_dim = (
+            dim_base
+            + dim_large
+        )
+
+        print(
+            "Initializing DualEncoderFusion:"
+        )
+
+        print(
+            f"  Variant:       {variant}"
+        )
+
+        print(
+            f"  Base dim:      {dim_base}"
+        )
+
+        print(
+            f"  Large dim:     {dim_large}"
+        )
+
+        print(
+            f"  Total input:   {total_input_dim}"
+        )
+
+        # ----------------------------------------------------
+        # MLP aggregator
+        # ----------------------------------------------------
+
+        self.aggregator = IQAFeatureAggregator(
+            input_dim=total_input_dim,
+            variant=variant,
+        )
+
+    # ========================================================
+    # FORWARD
+    # ========================================================
+
+    def forward(
+        self,
+        ref_base,
+        dist_base,
+        ref_large,
+        dist_large,
+    ):
         """
-        I tensori in input provengono dal Dataloader di Giuli, estratti dai due file .pt.
-        Shape attesa per ciascuno: [batch_size, num_layers, feature_dim]
+        Expected input shapes:
+
+            ref_base:
+                [batch, num_layers_base, feature_dim_base]
+
+            dist_base:
+                [batch, num_layers_base, feature_dim_base]
+
+            ref_large:
+                [batch, num_layers_large, feature_dim_large]
+
+            dist_large:
+                [batch, num_layers_large, feature_dim_large]
         """
-        # 1. Appiattiamo le feature di entrambi i modelli (da 3D a 2D)
-        r_base_flat = ref_base.flatten(start_dim=1)
-        d_base_flat = dist_base.flatten(start_dim=1)
-        
-        r_large_flat = ref_large.flatten(start_dim=1)
-        d_large_flat = dist_large.flatten(start_dim=1)
-        
-        # 2. Concateniamo le feature di base e large
-        # Shape finale: [batch_size, dim_base + dim_large]
-        ref_combined = torch.cat([r_base_flat, r_large_flat], dim=1)
-        dist_combined = torch.cat([d_base_flat, d_large_flat], dim=1)
-        
-        # 3. Passiamo tutto al nostro MLP
-        predicted_mos = self.aggregator(ref_combined, dist_combined)
-        
+
+        # ----------------------------------------------------
+        # Flatten Base
+        # ----------------------------------------------------
+
+        ref_base_flat = (
+            ref_base.flatten(
+                start_dim=1
+            )
+        )
+
+        dist_base_flat = (
+            dist_base.flatten(
+                start_dim=1
+            )
+        )
+
+        # ----------------------------------------------------
+        # Flatten Large
+        # ----------------------------------------------------
+
+        ref_large_flat = (
+            ref_large.flatten(
+                start_dim=1
+            )
+        )
+
+        dist_large_flat = (
+            dist_large.flatten(
+                start_dim=1
+            )
+        )
+
+        # ----------------------------------------------------
+        # Concatenate encoders
+        # ----------------------------------------------------
+
+        ref_combined = torch.cat(
+            [
+                ref_base_flat,
+                ref_large_flat,
+            ],
+            dim=1,
+        )
+
+        dist_combined = torch.cat(
+            [
+                dist_base_flat,
+                dist_large_flat,
+            ],
+            dim=1,
+        )
+
+        # ----------------------------------------------------
+        # Safety check
+        # ----------------------------------------------------
+
+        expected_dim = (
+            self.dim_base
+            + self.dim_large
+        )
+
+        if ref_combined.shape[1] != expected_dim:
+
+            raise ValueError(
+                "Unexpected feature dimension: "
+                f"expected {expected_dim}, "
+                f"got {ref_combined.shape[1]}"
+            )
+
+        if dist_combined.shape[1] != expected_dim:
+
+            raise ValueError(
+                "Unexpected distorted feature "
+                f"dimension: expected {expected_dim}, "
+                f"got {dist_combined.shape[1]}"
+            )
+
+        # ----------------------------------------------------
+        # MLP
+        # ----------------------------------------------------
+
+        predicted_mos = self.aggregator(
+            ref_combined,
+            dist_combined,
+        )
+
         return predicted_mos

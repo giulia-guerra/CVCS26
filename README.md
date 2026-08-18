@@ -242,15 +242,73 @@ Phase 2 successfully identified the most informative layer for each encoder and 
 
 ---
 
-## Next Step – Phase 3
+## Phase 3 – Supervised Learning & Regression
 
-The next phase introduces a supervised learning module.
+Phase 3 extends the IQA pipeline from feature-based correlation analysis to supervised learning.
 
-Goals:
+The goal is to learn a regression function that maps encoder features to Mean Opinion Scores (MOS).
 
-* Train a regression head on top of encoder features.
-* Predict MOS scores directly.
-* Implement a PyTorch training loop.
-* Compute training and validation losses.
-* Evaluate SRCC and PLCC during training.
-* Prepare SLURM scripts for large-scale experiments on the cluster.
+### Implemented components
+
+* PyTorch supervised training pipeline.
+* MLP regression head on top of frozen encoder features.
+* Train/validation split with fixed random seed.
+* Feature normalization computed from the training set only.
+* Dataset-specific MOS normalization.
+* MSE loss.
+* SRCC and PLCC evaluation during training.
+* Best-checkpoint selection based on validation SRCC.
+* Early stopping.
+* GPU support and SLURM-compatible training scripts.
+* Checkpoint and prediction saving.
+* Dedicated evaluation script for trained models.
+
+### Dual SigLIP2 Baseline
+
+The first Phase 3 experiment uses a dual-encoder architecture combining SigLIP2 Base and SigLIP2 Large features.
+
+| Model | Variant | Best Epoch | MSE | SRCC | PLCC |
+____________________________________________________
+| Dual SigLIP2 | Small | 15 | 4759.99 | 0.7952 | 0.8322 |
+| Dual SigLIP2 | Medium | 13 | 5411.94 | 0.8173 | 0.8410 |
+| **Dual SigLIP2** | **Large** | **15** | 6993.55 | **0.8222** | **0.8521** |
+
+The **Dual SigLIP2 Large** configuration achieved the best Phase 3 baseline performance, with **SRCC = 0.8222** and **PLCC = 0.8521** on the PIPAL validation split.
+
+---
+
+## Phase 3.5 – LIVE + TID2013 Mixture Ablation
+
+To evaluate the robustness of the regression architecture across datasets, a second experiment was performed by jointly training on **LIVE and TID2013**.
+
+The experiment combines frozen SigLIP2 Base and SigLIP2 Large features and compares three regression-head capacities:
+
+* **Small**
+* **Medium**
+* **Large**
+
+All variants use the same feature extraction pipeline, train/validation split, normalization strategy, optimizer settings, and random seed. The only variable is the capacity of the regression head.
+
+### Mixture Ablation Results
+
+| Variant | Mixed SRCC | Mixed PLCC | LIVE SRCC | LIVE PLCC | TID2013 SRCC | TID2013 PLCC |
+___________________________________________________________________________________________
+| **Medium** | **0.7500** | **0.8994** | 0.7843 | 0.8021 | **0.8542** | **0.8949** |
+| Small | 0.7301 | 0.8925 | **0.7921** | **0.8064** | 0.8070 | 0.8630 |
+| Large | 0.6250 | 0.5822 | -0.9598 | -0.8649 | 0.8117 | 0.8127 |
+
+The **Medium** variant achieves the best overall performance on the mixed validation set, reaching **SRCC = 0.7500** and **PLCC = 0.8994**.
+
+The Small variant performs slightly better on LIVE, while the Medium variant provides the best results on TID2013. The Large variant performs substantially worse and shows unstable training behavior: its best checkpoint was reached at **epoch 2**, after which validation performance deteriorated and early stopping was triggered.
+
+### Main Findings
+
+The Phase 3 experiments show that increasing the capacity of the regression head does not necessarily lead to better IQA performance.
+
+The results suggest that the **Medium architecture provides the best overall trade-off between model capacity and generalization**, while the Large configuration can become unstable when trained on the mixed LIVE + TID2013 setting.
+
+Overall, Phase 3 demonstrates that frozen visual encoder features can be successfully mapped to perceptual quality scores using a relatively lightweight supervised regression head.
+
+### Ablation Plot
+
+![Phase 3.5 Ablation](results/phase3_mixture_ablation_plots/phase3_ablation_mixed.png)
