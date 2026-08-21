@@ -379,3 +379,85 @@ class DualEncoderFusion(nn.Module):
         )
 
         return predicted_mos
+
+class AdvancedAttentionAggregator(nn.Module):
+    """
+    Modulo di Fusione Avanzato per lo Step 5 (Esperimenti Modello).
+    Usa un'architettura in stile Transformer Encoder con un [CLS] token 
+    imparabile per estrarre dinamicamente l'importanza dei layer.
+    """
+    def __init__(
+        self, 
+        dim_base=768, 
+        dim_large=1024, # dimensione reale di Siglip2-Large
+        proj_dim=256, 
+        num_heads=4, 
+        transformer_layers=1, 
+        dropout=0.3
+    ):
+        super().__init__()
+        
+        print(f"Inizializzazione AdvancedAttentionAggregator (Heads: {num_heads}, Proj_Dim: {proj_dim})")
+        
+        # 1. Proiezioni lineari per portare i due modelli nello stesso spazio latente
+        self.proj_base = nn.Linear(dim_base, proj_dim)
+        self.proj_large = nn.Linear(dim_large, proj_dim)
+        
+        # 2. Il CLS Token imparabile (stile ViT/BERT)
+        # Inizializzato in modo randomico, la rete imparerà come usarlo per "interrogare" i layer
+        self.cls_token = nn.Parameter(torch.randn(1, 1, proj_dim))
+        
+        # 3. Transformer Encoder (Self-Attention + Feed Forward)
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=proj_dim, 
+            nhead=num_heads, 
+            dim_feedforward=proj_dim * 2,
+            batch_first=True, 
+            dropout=dropout
+        )
+        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=transformer_layers)
+        
+        # 4. Head di regressione finale (Prende in input SOLO il CLS token)
+        self.head = nn.Sequential(
+            nn.Linear(proj_dim, 128),
+            nn.ReLU(),
+            nn.Dropout(p=dropout),
+            nn.Linear(128, 1)
+        )
+
+    def forward(self, ref_base, dist_base, ref_large, dist_large):
+        """
+        Input attesi: Tensori 3D [batch_size, num_layers, feature_dim]
+        (Giuli NON deve aver chiamato .flatten() sul dataloader per usare questo modello!)
+        """
+        # 1. Calcolo della differenza assoluta layer per layer
+        diff_base = torch.abs(ref_base - dist_base)   
+        diff_large = torch.abs(ref_large - dist_large) 
+        
+        # 2. Proiezione nello spazio comune
+        p_base = self.proj_base(diff_base)     # [batch, num_layers_base, proj_dim]
+        p_large = self.proj_large(diff_large)  # [batch, num_layers_large, proj_dim]
+        
+        # 3. Concatenazione dei token dei layer (Sequenza)
+        # Se Base ha 13 layer e Large ne ha 26, tokens avrà shape [batch, 39, proj_dim]
+        layer_tokens = torch.cat([p_base, p_large], dim=1)
+        
+        # 4. Aggiunta del CLS Token all'inizio della sequenza
+        batch_size = layer_tokens.shape[0]
+        # Espandiamo il CLS token per ogni elemento del batch
+        cls_tokens = self.cls_token.expand(batch_size, -1, -1) # [batch, 1, proj_dim]
+        
+        # Sequenza finale: [batch, 1 + 39, proj_dim]
+        sequence = torch.cat([cls_tokens, layer_tokens], dim=1)
+        
+        # 5. Passaggio nel Transformer
+        # L'Attenzione farà interagire il CLS token con tutti i layer e i layer tra di loro
+        out_sequence = self.transformer(sequence)
+        
+        # 6. Estrazione del SOLO output del CLS token (indice 0)
+        cls_out = out_sequence[:, 0, :] # [batch, proj_dim]
+        
+        # 7. Regressione a MOS
+        score = self.head(cls_out)
+        
+        return score.squeeze(-1) # [batch_size]
