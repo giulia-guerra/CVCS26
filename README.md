@@ -277,7 +277,7 @@ The **Dual SigLIP2 Large** configuration achieved the best Phase 3 baseline perf
 
 ---
 
-## Phase 3.5 – LIVE + TID2013 Mixture Ablation
+## Phase 3 – LIVE + TID2013 Mixture Ablation
 
 To evaluate the robustness of the regression architecture across datasets, a second experiment was performed by jointly training on **LIVE and TID2013**.
 
@@ -311,4 +311,22 @@ Overall, Phase 3 demonstrates that frozen visual encoder features can be success
 
 ### Ablation Plot
 
-![Phase 3.5 Ablation](results/phase3_mixture_ablation_plots/phase3_ablation_mixed.png)
+![Phase 3 Ablation](results/phase3_mixture_ablation_plots/phase3_ablation_mixed.png)
+
+## Phase 3 – Advanced Architectures
+
+Planned experiments:
+
+- Cross-Attention Fusion
+- Feature Fusion Module
+
+Evaluation metrics:
+
+- SRCC
+- PLCC
+- MSE
+
+Datasets:
+
+- PIPAL
+- LIVE + TID2013 mixture
