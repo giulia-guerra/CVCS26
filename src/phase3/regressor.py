@@ -2,6 +2,8 @@
 # Riceve le feature in input, le elabora attraverso due layer fully connected con ReLU e dropout 
 # e infine produce un singolo valore, cioè il MOS predetto per ogni immagine.
 
+# PROBABILMENTE DA ELIMINARE 
+
 import torch.nn as nn
 
 

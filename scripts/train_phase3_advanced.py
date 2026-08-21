@@ -18,6 +18,9 @@ from src.phase3.aggregation import AdvancedAttentionAggregator
 # ============================================================
 
 def set_seed(seed):
+    """
+    Set random seeds for reproducibility.
+    """
 
     random.seed(seed)
     np.random.seed(seed)
@@ -36,7 +39,17 @@ def evaluate(
     model,
     loader,
     device,
+    mos_mean,
+    mos_std,
 ):
+    """
+    Evaluate the model.
+
+    The model predicts normalized MOS.
+
+    Predictions are converted back to the original MOS
+    scale before computing MSE, SRCC and PLCC.
+    """
 
     model.eval()
 
@@ -47,6 +60,10 @@ def evaluate(
 
         for batch in loader:
 
+            # ------------------------------------------------
+            # Move data to device
+            # ------------------------------------------------
+
             ref_base = batch["ref_base"].to(device)
             dist_base = batch["dist_base"].to(device)
 
@@ -55,11 +72,33 @@ def evaluate(
 
             mos = batch["mos"].to(device)
 
-            prediction = model(
+            # ------------------------------------------------
+            # Normalize target MOS
+            # ------------------------------------------------
+
+            mos_normalized = (
+                (mos - mos_mean)
+                / mos_std
+            )
+
+            # ------------------------------------------------
+            # Forward pass
+            # ------------------------------------------------
+
+            prediction_normalized = model(
                 ref_base,
                 dist_base,
                 ref_large,
                 dist_large,
+            )
+
+            # ------------------------------------------------
+            # Convert prediction back to original MOS scale
+            # ------------------------------------------------
+
+            prediction = (
+                prediction_normalized * mos_std
+                + mos_mean
             )
 
             predictions.append(
@@ -70,6 +109,10 @@ def evaluate(
                 mos.cpu()
             )
 
+    # ========================================================
+    # CONCATENATE
+    # ========================================================
+
     predictions = torch.cat(
         predictions
     ).numpy()
@@ -78,14 +121,30 @@ def evaluate(
         targets
     ).numpy()
 
+    # Make sure they are 1D
+    predictions = predictions.reshape(-1)
+    targets = targets.reshape(-1)
+
+    # ========================================================
+    # MSE
+    # ========================================================
+
     mse = np.mean(
         (predictions - targets) ** 2
     )
+
+    # ========================================================
+    # SRCC
+    # ========================================================
 
     srcc = spearmanr(
         predictions,
         targets,
     ).statistic
+
+    # ========================================================
+    # PLCC
+    # ========================================================
 
     plcc = pearsonr(
         predictions,
@@ -101,6 +160,10 @@ def evaluate(
 
 def train(args):
 
+    # ========================================================
+    # SEED
+    # ========================================================
+
     set_seed(args.seed)
 
     # ========================================================
@@ -113,25 +176,39 @@ def train(args):
         else "cpu"
     )
 
-    print("\n" + "=" * 60)
+    print("\n" + "=" * 70)
     print("PHASE 3 - ADVANCED TRAINING")
-    print("=" * 60)
+    print("=" * 70)
 
     print(f"Device: {device}")
 
     if torch.cuda.is_available():
 
         print(
-            f"GPU: "
-            f"{torch.cuda.get_device_name(0)}"
+            f"GPU: {torch.cuda.get_device_name(0)}"
         )
+
+    # ========================================================
+    # FEATURE FILES
+    # ========================================================
+
+    print("\nLoading existing feature files...")
+
+    print(
+        f"Base features : {args.features_base}"
+    )
+
+    print(
+        f"Large features: {args.features_large}"
+    )
 
     # ========================================================
     # DATASET
     # ========================================================
 
     dataset = AdvancedFeatureDataset(
-        feature_file=args.features,
+        features_base_path=args.features_base,
+        features_large_path=args.features_large,
     )
 
     # ========================================================
@@ -142,7 +219,10 @@ def train(args):
         len(dataset) * args.val_ratio
     )
 
-    train_size = len(dataset) - val_size
+    train_size = (
+        len(dataset)
+        - val_size
+    )
 
     train_dataset, val_dataset = random_split(
         dataset,
@@ -150,6 +230,81 @@ def train(args):
         generator=torch.Generator().manual_seed(
             args.seed
         ),
+    )
+
+    print("\n" + "=" * 70)
+    print("DATASET SPLIT")
+    print("=" * 70)
+
+    print(
+        f"Total samples: {len(dataset)}"
+    )
+
+    print(
+        f"Train samples: {len(train_dataset)}"
+    )
+
+    print(
+        f"Val samples:   {len(val_dataset)}"
+    )
+
+    print(
+        f"Validation ratio: {args.val_ratio}"
+    )
+
+    print(
+        f"Random seed:      {args.seed}"
+    )
+
+    # ========================================================
+    # MOS NORMALIZATION
+    # ========================================================
+    #
+    # IMPORTANT:
+    # Mean and std are calculated ONLY on the training set.
+    #
+    # This avoids leaking validation information into training.
+    # ========================================================
+
+    train_indices = train_dataset.indices
+
+    train_mos = dataset.mos[
+        train_indices
+    ].float()
+
+    mos_mean = train_mos.mean().to(device)
+
+    mos_std = train_mos.std().to(device)
+
+    # Safety check
+    if mos_std.item() <= 0:
+
+        raise ValueError(
+            "MOS standard deviation is zero. "
+            "Cannot normalize MOS."
+        )
+
+    print("\n" + "=" * 70)
+    print("MOS NORMALIZATION")
+    print("=" * 70)
+
+    print(
+        f"Training MOS mean: "
+        f"{mos_mean.item():.6f}"
+    )
+
+    print(
+        f"Training MOS std:  "
+        f"{mos_std.item():.6f}"
+    )
+
+    print(
+        "\nTraining target:"
+    )
+
+    print(
+        "MOS_normalized = "
+        "(MOS - mean) / std"
     )
 
     # ========================================================
@@ -172,17 +327,13 @@ def train(args):
         pin_memory=torch.cuda.is_available(),
     )
 
-    print("\nDataset split:")
-    print(
-        f"Train samples: {len(train_dataset)}"
-    )
-    print(
-        f"Val samples:   {len(val_dataset)}"
-    )
-
     # ========================================================
     # MODEL
     # ========================================================
+
+    print("\n" + "=" * 70)
+    print("CREATING MODEL")
+    print("=" * 70)
 
     model = AdvancedAttentionAggregator(
         dim_base=args.dim_base,
@@ -240,6 +391,10 @@ def train(args):
     # TRAINING LOOP
     # ========================================================
 
+    print("\n" + "=" * 70)
+    print("STARTING TRAINING")
+    print("=" * 70)
+
     for epoch in range(
         1,
         args.epochs + 1,
@@ -255,6 +410,10 @@ def train(args):
 
         for batch in train_loader:
 
+            # ------------------------------------------------
+            # Move data to device
+            # ------------------------------------------------
+
             ref_base = batch["ref_base"].to(device)
             dist_base = batch["dist_base"].to(device)
 
@@ -263,55 +422,94 @@ def train(args):
 
             mos = batch["mos"].to(device)
 
+            # ------------------------------------------------
+            # Normalize MOS
+            # ------------------------------------------------
+
+            mos_normalized = (
+                (mos - mos_mean)
+                / mos_std
+            )
+
+            # ------------------------------------------------
+            # Reset gradients
+            # ------------------------------------------------
+
             optimizer.zero_grad()
 
-            prediction = model(
+            # ------------------------------------------------
+            # Forward
+            # ------------------------------------------------
+
+            prediction_normalized = model(
                 ref_base,
                 dist_base,
                 ref_large,
                 dist_large,
             )
 
+            # ------------------------------------------------
+            # MSE on normalized MOS
+            # ------------------------------------------------
+
             loss = criterion(
-                prediction,
-                mos,
+                prediction_normalized,
+                mos_normalized,
             )
+
+            # ------------------------------------------------
+            # Backpropagation
+            # ------------------------------------------------
 
             loss.backward()
 
             optimizer.step()
+
+            # ------------------------------------------------
+            # Accumulate loss
+            # ------------------------------------------------
 
             total_loss += (
                 loss.item()
                 * mos.size(0)
             )
 
+        # ====================================================
+        # TRAIN LOSS
+        # ====================================================
+
         train_loss = (
             total_loss
             / len(train_dataset)
         )
 
-        # ----------------------------------------------------
+        # ====================================================
         # VALIDATION
-        # ----------------------------------------------------
+        # ====================================================
 
         val_mse, srcc, plcc = evaluate(
             model,
             val_loader,
             device,
+            mos_mean,
+            mos_std,
         )
+
+        # ====================================================
+        # PRINT RESULTS
+        # ====================================================
 
         print(
             f"Epoch {epoch:03d}/{args.epochs} | "
-            f"Train Loss: {train_loss:.4f} | "
+            f"Train Loss: {train_loss:.6f} | "
             f"Val MSE: {val_mse:.4f} | "
             f"SRCC: {srcc:.6f} | "
             f"PLCC: {plcc:.6f}"
         )
 
-        # ----------------------------------------------------
+        # ====================================================
         # SAVE BEST MODEL
-        # ----------------------------------------------------
+        # ====================================================
 
         if srcc > best_srcc:
 
@@ -324,14 +522,38 @@ def train(args):
             torch.save(
                 {
                     "epoch": epoch,
+
                     "model_state_dict":
                         model.state_dict(),
+
                     "optimizer_state_dict":
                         optimizer.state_dict(),
-                    "best_srcc": srcc,
-                    "best_plcc": plcc,
-                    "best_mse": val_mse,
-                    "args": vars(args),
+
+                    "best_srcc":
+                        srcc,
+
+                    "best_plcc":
+                        plcc,
+
+                    "best_mse":
+                        val_mse,
+
+                    # ----------------------------------------
+                    # MOS normalization statistics
+                    # ----------------------------------------
+
+                    "mos_mean":
+                        mos_mean.cpu(),
+
+                    "mos_std":
+                        mos_std.cpu(),
+
+                    # ----------------------------------------
+                    # Training configuration
+                    # ----------------------------------------
+
+                    "args":
+                        vars(args),
                 },
                 checkpoint_path,
             )
@@ -366,9 +588,9 @@ def train(args):
     # FINAL SUMMARY
     # ========================================================
 
-    print("\n" + "=" * 60)
+    print("\n" + "=" * 70)
     print("TRAINING COMPLETED")
-    print("=" * 60)
+    print("=" * 70)
 
     print(
         f"Best SRCC: {best_srcc:.6f}"
@@ -379,14 +601,22 @@ def train(args):
     )
 
     print(
-        f"Best MSE:  {best_mse:.4f}"
+        f"Best MSE:  {best_mse:.6f}"
+    )
+
+    print(
+        f"MOS mean:  {mos_mean.item():.6f}"
+    )
+
+    print(
+        f"MOS std:   {mos_std.item():.6f}"
     )
 
     print(
         f"Checkpoint: {checkpoint_path}"
     )
 
-    print("=" * 60)
+    print("=" * 70)
 
 
 # ============================================================
@@ -403,16 +633,24 @@ def main():
     )
 
     # ========================================================
-    # FEATURES
+    # FEATURE FILES
     # ========================================================
 
     parser.add_argument(
-        "--features",
+        "--features-base",
         required=True,
         help=(
-            "Path to the single .pt file "
-            "containing ref_base, dist_base, "
-            "ref_large, dist_large and mos."
+            "Path to SigLIP2 Base "
+            "all-layers feature file."
+        ),
+    )
+
+    parser.add_argument(
+        "--features-large",
+        required=True,
+        help=(
+            "Path to SigLIP2 Large "
+            "all-layers feature file."
         ),
     )
 
@@ -521,6 +759,10 @@ def main():
 
     train(args)
 
+
+# ============================================================
+# ENTRY POINT
+# ============================================================
 
 if __name__ == "__main__":
     main()

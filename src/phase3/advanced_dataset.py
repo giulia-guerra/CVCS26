@@ -6,227 +6,131 @@ class AdvancedFeatureDataset(Dataset):
     """
     Dataset for the Advanced Phase 3 experiment.
 
-    The dataset is loaded from a single .pt file containing:
+    Loads directly:
 
-        ref_base
-        dist_base
-        ref_large
-        dist_large
-        mos
+        siglip2_base_all_layers.pt
+        siglip2_large_all_layers.pt
 
-    Expected shapes:
+    Original feature format:
 
-        ref_base:
-            [N, L_base, 768]
+        [num_layers, num_samples, feature_dim]
 
-        dist_base:
-            [N, L_base, 768]
+    Converted internally to:
 
-        ref_large:
-            [N, L_large, 1024]
-
-        dist_large:
-            [N, L_large, 1024]
-
-        mos:
-            [N]
-
-    Each sample returned by __getitem__ is a dictionary.
+        [num_samples, num_layers, feature_dim]
     """
 
-    def __init__(self, feature_file):
+    def __init__(
+        self,
+        features_base_path,
+        features_large_path,
+    ):
 
         super().__init__()
 
-        print("\nLoading Advanced dataset...")
-        print(f"Feature file: {feature_file}")
+        print("\nLoading Base features...")
+        print(features_base_path)
 
-        data = torch.load(
-            feature_file,
+        base_data = torch.load(
+            features_base_path,
             map_location="cpu",
+            weights_only=False,
+        )
+
+        print("\nLoading Large features...")
+        print(features_large_path)
+
+        large_data = torch.load(
+            features_large_path,
+            map_location="cpu",
+            weights_only=False,
         )
 
         # ==================================================
-        # REQUIRED KEYS
+        # BASE
         # ==================================================
 
-        required_keys = [
-            "ref_base",
-            "dist_base",
-            "ref_large",
-            "dist_large",
-            "mos",
-        ]
+        self.ref_base = (
+            base_data["ref_features"]
+            .permute(1, 0, 2)
+            .float()
+        )
 
-        for key in required_keys:
-
-            if key not in data:
-
-                raise KeyError(
-                    f"Missing key '{key}' in feature file. "
-                    f"Expected keys: {required_keys}"
-                )
+        self.dist_base = (
+            base_data["dist_features"]
+            .permute(1, 0, 2)
+            .float()
+        )
 
         # ==================================================
-        # LOAD DATA
+        # LARGE
         # ==================================================
 
-        self.ref_base = data["ref_base"].float()
-        self.dist_base = data["dist_base"].float()
+        self.ref_large = (
+            large_data["ref_features"]
+            .permute(1, 0, 2)
+            .float()
+        )
 
-        self.ref_large = data["ref_large"].float()
-        self.dist_large = data["dist_large"].float()
-
-        self.mos = data["mos"].float()
+        self.dist_large = (
+            large_data["dist_features"]
+            .permute(1, 0, 2)
+            .float()
+        )
 
         # ==================================================
-        # CHECK NUMBER OF SAMPLES
+        # MOS
         # ==================================================
+
+        self.mos = base_data["mos"].float()
+
+        # ==================================================
+        # CHECKS
+        # ==================================================
+
+        if not torch.equal(
+            base_data["mos"],
+            large_data["mos"],
+        ):
+            raise ValueError(
+                "MOS vectors differ between "
+                "Base and Large files."
+            )
 
         num_samples = len(self.mos)
 
-        if len(self.ref_base) != num_samples:
-            raise ValueError(
-                "ref_base and mos have different "
-                "number of samples."
-            )
-
-        if len(self.dist_base) != num_samples:
-            raise ValueError(
-                "dist_base and mos have different "
-                "number of samples."
-            )
-
-        if len(self.ref_large) != num_samples:
-            raise ValueError(
-                "ref_large and mos have different "
-                "number of samples."
-            )
-
-        if len(self.dist_large) != num_samples:
-            raise ValueError(
-                "dist_large and mos have different "
-                "number of samples."
-            )
+        assert len(self.ref_base) == num_samples
+        assert len(self.dist_base) == num_samples
+        assert len(self.ref_large) == num_samples
+        assert len(self.dist_large) == num_samples
 
         # ==================================================
-        # CHECK DIMENSIONS
-        # ==================================================
-
-        if self.ref_base.ndim != 3:
-            raise ValueError(
-                f"ref_base must be 3D, got "
-                f"{self.ref_base.shape}"
-            )
-
-        if self.dist_base.ndim != 3:
-            raise ValueError(
-                f"dist_base must be 3D, got "
-                f"{self.dist_base.shape}"
-            )
-
-        if self.ref_large.ndim != 3:
-            raise ValueError(
-                f"ref_large must be 3D, got "
-                f"{self.ref_large.shape}"
-            )
-
-        if self.dist_large.ndim != 3:
-            raise ValueError(
-                f"dist_large must be 3D, got "
-                f"{self.dist_large.shape}"
-            )
-
-        # ==================================================
-        # REFERENCE / DISTORTED SHAPE CHECK
-        # ==================================================
-
-        if self.ref_base.shape != self.dist_base.shape:
-
-            raise ValueError(
-                "ref_base and dist_base must have "
-                "the same shape."
-            )
-
-        if self.ref_large.shape != self.dist_large.shape:
-
-            raise ValueError(
-                "ref_large and dist_large must have "
-                "the same shape."
-            )
-
-        # ==================================================
-        # FEATURE DIMENSION CHECK
-        # ==================================================
-
-        base_dim = self.ref_base.shape[-1]
-        large_dim = self.ref_large.shape[-1]
-
-        if base_dim != 768:
-
-            raise ValueError(
-                f"Expected Base feature dimension 768, "
-                f"got {base_dim}"
-            )
-
-        if large_dim != 1024:
-
-            raise ValueError(
-                f"Expected Large feature dimension 1024, "
-                f"got {large_dim}"
-            )
-
-        # ==================================================
-        # PRINT INFORMATION
+        # INFO
         # ==================================================
 
         print("\n" + "=" * 60)
         print("ADVANCED FEATURE DATASET")
         print("=" * 60)
 
-        print(f"Samples:        {num_samples}")
+        print(f"Samples: {num_samples}")
 
         print(
-            f"Base features:  {self.ref_base.shape}"
+            f"Base:  {self.ref_base.shape}"
         )
 
         print(
-            f"Large features: {self.ref_large.shape}"
+            f"Large: {self.ref_large.shape}"
         )
 
         print(
-            f"MOS:            {self.mos.shape}"
-        )
-
-        print(
-            f"Base layers:    {self.ref_base.shape[1]}"
-        )
-
-        print(
-            f"Large layers:   {self.ref_large.shape[1]}"
-        )
-
-        print(
-            f"Base dim:       {self.ref_base.shape[2]}"
-        )
-
-        print(
-            f"Large dim:      {self.ref_large.shape[2]}"
+            f"MOS:   {self.mos.shape}"
         )
 
         print("=" * 60)
 
-    # ======================================================
-    # LENGTH
-    # ======================================================
-
     def __len__(self):
 
         return len(self.mos)
-
-    # ======================================================
-    # GET ITEM
-    # ======================================================
 
     def __getitem__(self, idx):
 

@@ -10,10 +10,24 @@ from src.phase3.aggregation import AdvancedAttentionAggregator
 
 
 # ============================================================
-# EVALUATION FUNCTION
+# EVALUATION
 # ============================================================
 
-def evaluate(model, loader, device):
+def evaluate(
+    model,
+    loader,
+    device,
+    mos_mean,
+    mos_std,
+):
+    """
+    Evaluate the Advanced model.
+
+    The model predicts normalized MOS.
+
+    Predictions are converted back to the original MOS
+    scale before computing MSE, SRCC and PLCC.
+    """
 
     model.eval()
 
@@ -40,11 +54,20 @@ def evaluate(model, loader, device):
             # Forward pass
             # ------------------------------------------------
 
-            prediction = model(
+            prediction_normalized = model(
                 ref_base,
                 dist_base,
                 ref_large,
                 dist_large,
+            )
+
+            # ------------------------------------------------
+            # Convert prediction back to original MOS scale
+            # ------------------------------------------------
+
+            prediction = (
+                prediction_normalized * mos_std
+                + mos_mean
             )
 
             predictions.append(
@@ -56,7 +79,7 @@ def evaluate(model, loader, device):
             )
 
     # ========================================================
-    # CONCATENATE RESULTS
+    # CONCATENATE
     # ========================================================
 
     predictions = torch.cat(
@@ -114,16 +137,24 @@ def main():
     )
 
     # ========================================================
-    # FEATURES
+    # FEATURE FILES
     # ========================================================
 
     parser.add_argument(
-        "--features",
+        "--features-base",
         required=True,
         help=(
-            "Path to the single .pt file containing "
-            "ref_base, dist_base, ref_large, "
-            "dist_large and mos."
+            "Path to SigLIP2 Base "
+            "all-layers feature file."
+        ),
+    )
+
+    parser.add_argument(
+        "--features-large",
+        required=True,
+        help=(
+            "Path to SigLIP2 Large "
+            "all-layers feature file."
         ),
     )
 
@@ -217,17 +248,18 @@ def main():
         else "cpu"
     )
 
-    print("\n" + "=" * 60)
-    print("PHASE 3 - ADVANCED ATTENTION EVALUATION")
-    print("=" * 60)
+    print("\n" + "=" * 70)
+    print("PHASE 3 - ADVANCED EVALUATION")
+    print("=" * 70)
 
-    print(f"Device: {device}")
+    print(
+        f"Device: {device}"
+    )
 
     if torch.cuda.is_available():
 
         print(
-            f"GPU: "
-            f"{torch.cuda.get_device_name(0)}"
+            f"GPU: {torch.cuda.get_device_name(0)}"
         )
 
     # ========================================================
@@ -235,7 +267,8 @@ def main():
     # ========================================================
 
     dataset = AdvancedFeatureDataset(
-        feature_file=args.features,
+        features_base_path=args.features_base,
+        features_large_path=args.features_large,
     )
 
     # ========================================================
@@ -246,7 +279,10 @@ def main():
         len(dataset) * args.val_ratio
     )
 
-    train_size = len(dataset) - val_size
+    train_size = (
+        len(dataset)
+        - val_size
+    )
 
     _, val_dataset = random_split(
         dataset,
@@ -256,13 +292,28 @@ def main():
         ),
     )
 
-    print("\nValidation split:")
+    print("\n" + "=" * 70)
+    print("VALIDATION SPLIT")
+    print("=" * 70)
+
+    print(
+        f"Total samples: {len(dataset)}"
+    )
+
     print(
         f"Validation samples: {len(val_dataset)}"
     )
 
+    print(
+        f"Validation ratio: {args.val_ratio}"
+    )
+
+    print(
+        f"Random seed: {args.seed}"
+    )
+
     # ========================================================
-    # VALIDATION DATALOADER
+    # DATALOADER
     # ========================================================
 
     val_loader = DataLoader(
@@ -276,6 +327,10 @@ def main():
     # ========================================================
     # MODEL
     # ========================================================
+
+    print("\n" + "=" * 70)
+    print("CREATING MODEL")
+    print("=" * 70)
 
     model = AdvancedAttentionAggregator(
         dim_base=args.dim_base,
@@ -298,6 +353,10 @@ def main():
         weights_only=False,
     )
 
+    # --------------------------------------------------------
+    # Check model state
+    # --------------------------------------------------------
+
     if "model_state_dict" not in checkpoint:
 
         raise KeyError(
@@ -309,8 +368,43 @@ def main():
         checkpoint["model_state_dict"]
     )
 
+    # ========================================================
+    # LOAD MOS NORMALIZATION
+    # ========================================================
+
+    if (
+        "mos_mean" not in checkpoint
+        or "mos_std" not in checkpoint
+    ):
+
+        raise KeyError(
+            "Checkpoint does not contain "
+            "'mos_mean' and/or 'mos_std'. "
+            "This checkpoint was probably created "
+            "with the old training script without "
+            "MOS normalization."
+        )
+
+    mos_mean = checkpoint["mos_mean"].to(device)
+    mos_std = checkpoint["mos_std"].to(device)
+
+    if mos_std.item() <= 0:
+
+        raise ValueError(
+            "Invalid MOS standard deviation "
+            "stored in checkpoint."
+        )
+
     print(
         f"Checkpoint: {args.checkpoint}"
+    )
+
+    print(
+        f"MOS mean: {mos_mean.item():.6f}"
+    )
+
+    print(
+        f"MOS std:  {mos_std.item():.6f}"
     )
 
     # ========================================================
@@ -349,21 +443,25 @@ def main():
     # EVALUATION
     # ========================================================
 
-    print("\nRunning evaluation...")
+    print("\n" + "=" * 70)
+    print("RUNNING EVALUATION")
+    print("=" * 70)
 
     mse, srcc, plcc = evaluate(
         model,
         val_loader,
         device,
+        mos_mean,
+        mos_std,
     )
 
     # ========================================================
     # RESULTS
     # ========================================================
 
-    print("\n" + "=" * 60)
+    print("\n" + "=" * 70)
     print("RESULTS")
-    print("=" * 60)
+    print("=" * 70)
 
     print(
         f"MSE:  {mse:.6f}"
@@ -377,7 +475,7 @@ def main():
         f"PLCC: {plcc:.6f}"
     )
 
-    print("=" * 60)
+    print("=" * 70)
 
 
 # ============================================================

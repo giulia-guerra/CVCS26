@@ -1,4 +1,3 @@
-# Moduli della Fase 3 (MLP, Cross-Attention)
 import torch
 import torch.nn as nn
 
@@ -13,16 +12,13 @@ class IQAFeatureAggregator(nn.Module):
 
     Input:
         Concatenated absolute difference between
-        reference and distorted features from:
-
-            - SigLIP2 Base
-            - SigLIP2 Large
+        reference and distorted features.
 
     Input shape:
         [batch_size, input_dim]
 
     Output:
-        Predicted normalized MOS
+        Predicted MOS
         [batch_size]
     """
 
@@ -33,6 +29,7 @@ class IQAFeatureAggregator(nn.Module):
     ):
         super().__init__()
 
+        self.input_dim = input_dim
         self.variant = variant
 
         # ----------------------------------------------------
@@ -136,24 +133,44 @@ class IQAFeatureAggregator(nn.Module):
         dist_features,
     ):
         """
-        Compute absolute feature difference and
-        predict MOS.
+        Compute absolute reference-distorted
+        feature difference and predict MOS.
 
-        Expected input:
-
+        Inputs:
             ref_features:
-                [batch_size, input_dim]
+                [B, input_dim]
 
             dist_features:
-                [batch_size, input_dim]
+                [B, input_dim]
 
         Returns:
-
-            [batch_size]
+            [B]
         """
 
+        if ref_features.shape != dist_features.shape:
+            raise ValueError(
+                "Reference and distorted features "
+                "must have the same shape. "
+                f"Got {ref_features.shape} and "
+                f"{dist_features.shape}."
+            )
+
+        if ref_features.ndim != 2:
+            raise ValueError(
+                "IQAFeatureAggregator expects "
+                "2D tensors [B, input_dim]. "
+                f"Got shape {ref_features.shape}."
+            )
+
+        if ref_features.shape[1] != self.input_dim:
+            raise ValueError(
+                "Unexpected input dimension. "
+                f"Expected {self.input_dim}, "
+                f"got {ref_features.shape[1]}."
+            )
+
         # ----------------------------------------------------
-        # Absolute reference-distorted difference
+        # Absolute difference
         # ----------------------------------------------------
 
         diff = torch.abs(
@@ -161,14 +178,11 @@ class IQAFeatureAggregator(nn.Module):
         )
 
         # ----------------------------------------------------
-        # MLP regression
+        # MLP
         # ----------------------------------------------------
 
-        score = self.mlp(
-            diff
-        )
+        score = self.mlp(diff)
 
-        # [batch, 1] -> [batch]
         return score.squeeze(-1)
 
 
@@ -178,32 +192,40 @@ class IQAFeatureAggregator(nn.Module):
 
 class DualEncoderFusion(nn.Module):
     """
-    Dual-encoder fusion model for Phase 3.
+    Dual-encoder MLP fusion model.
 
-    The model receives all layers from:
+    This model receives all layers from:
 
         - SigLIP2 Base
         - SigLIP2 Large
 
-    For each encoder:
+    Expected inputs:
 
-        reference
-            +
-        distorted
+        ref_base:
+            [B, L_base, D_base]
 
-    features are flattened and concatenated.
+        dist_base:
+            [B, L_base, D_base]
 
-    Then the absolute difference between the
-    reference and distorted representations is
-    computed and passed to an MLP regressor.
+        ref_large:
+            [B, L_large, D_large]
 
-    Example for PIPAL:
+        dist_large:
+            [B, L_large, D_large]
+
+    The layer dimensions must be provided explicitly.
+
+    Example:
 
         Base:
-            [batch, 13, 768]
+            L_base = 13
+            D_base = 768
 
         Large:
-            [batch, 25, 1024]
+            L_large = 25
+            D_large = 1024
+
+    Then:
 
         Base flattened:
             13 * 768 = 9984
@@ -212,28 +234,44 @@ class DualEncoderFusion(nn.Module):
             25 * 1024 = 25600
 
         Total:
-            9984 + 25600 = 35584
+            35584
     """
 
     def __init__(
         self,
         dim_base,
         dim_large,
+        num_layers_base,
+        num_layers_large,
         variant="medium",
     ):
         super().__init__()
 
         self.dim_base = dim_base
         self.dim_large = dim_large
+
+        self.num_layers_base = num_layers_base
+        self.num_layers_large = num_layers_large
+
         self.variant = variant
 
         # ----------------------------------------------------
         # Total input dimension
         # ----------------------------------------------------
 
+        base_input_dim = (
+            num_layers_base
+            * dim_base
+        )
+
+        large_input_dim = (
+            num_layers_large
+            * dim_large
+        )
+
         total_input_dim = (
-            dim_base
-            + dim_large
+            base_input_dim
+            + large_input_dim
         )
 
         print(
@@ -241,19 +279,35 @@ class DualEncoderFusion(nn.Module):
         )
 
         print(
-            f"  Variant:       {variant}"
+            f"  Variant:          {variant}"
         )
 
         print(
-            f"  Base dim:      {dim_base}"
+            f"  Base layers:      {num_layers_base}"
         )
 
         print(
-            f"  Large dim:     {dim_large}"
+            f"  Base dimension:   {dim_base}"
         )
 
         print(
-            f"  Total input:   {total_input_dim}"
+            f"  Base flattened:   {base_input_dim}"
+        )
+
+        print(
+            f"  Large layers:     {num_layers_large}"
+        )
+
+        print(
+            f"  Large dimension:  {dim_large}"
+        )
+
+        print(
+            f"  Large flattened:  {large_input_dim}"
+        )
+
+        print(
+            f"  Total input:      {total_input_dim}"
         )
 
         # ----------------------------------------------------
@@ -277,51 +331,112 @@ class DualEncoderFusion(nn.Module):
         dist_large,
     ):
         """
-        Expected input shapes:
+        Forward pass.
+
+        Inputs:
 
             ref_base:
-                [batch, num_layers_base, feature_dim_base]
+                [B, L_base, D_base]
 
             dist_base:
-                [batch, num_layers_base, feature_dim_base]
+                [B, L_base, D_base]
 
             ref_large:
-                [batch, num_layers_large, feature_dim_large]
+                [B, L_large, D_large]
 
             dist_large:
-                [batch, num_layers_large, feature_dim_large]
+                [B, L_large, D_large]
+
+        Returns:
+
+            predicted MOS:
+                [B]
         """
+
+        # ----------------------------------------------------
+        # Shape checks
+        # ----------------------------------------------------
+
+        if ref_base.shape != dist_base.shape:
+            raise ValueError(
+                "Base reference and distorted tensors "
+                "must have the same shape."
+            )
+
+        if ref_large.shape != dist_large.shape:
+            raise ValueError(
+                "Large reference and distorted tensors "
+                "must have the same shape."
+            )
+
+        if ref_base.ndim != 3:
+            raise ValueError(
+                "Expected Base tensors with shape "
+                "[B, L_base, D_base]. "
+                f"Got {ref_base.shape}."
+            )
+
+        if ref_large.ndim != 3:
+            raise ValueError(
+                "Expected Large tensors with shape "
+                "[B, L_large, D_large]. "
+                f"Got {ref_large.shape}."
+            )
+
+        # ----------------------------------------------------
+        # Check dimensions
+        # ----------------------------------------------------
+
+        if ref_base.shape[1] != self.num_layers_base:
+            raise ValueError(
+                "Unexpected number of Base layers. "
+                f"Expected {self.num_layers_base}, "
+                f"got {ref_base.shape[1]}."
+            )
+
+        if ref_base.shape[2] != self.dim_base:
+            raise ValueError(
+                "Unexpected Base feature dimension. "
+                f"Expected {self.dim_base}, "
+                f"got {ref_base.shape[2]}."
+            )
+
+        if ref_large.shape[1] != self.num_layers_large:
+            raise ValueError(
+                "Unexpected number of Large layers. "
+                f"Expected {self.num_layers_large}, "
+                f"got {ref_large.shape[1]}."
+            )
+
+        if ref_large.shape[2] != self.dim_large:
+            raise ValueError(
+                "Unexpected Large feature dimension. "
+                f"Expected {self.dim_large}, "
+                f"got {ref_large.shape[2]}."
+            )
 
         # ----------------------------------------------------
         # Flatten Base
         # ----------------------------------------------------
 
-        ref_base_flat = (
-            ref_base.flatten(
-                start_dim=1
-            )
+        ref_base_flat = ref_base.flatten(
+            start_dim=1
         )
 
-        dist_base_flat = (
-            dist_base.flatten(
-                start_dim=1
-            )
+        dist_base_flat = dist_base.flatten(
+            start_dim=1
         )
 
         # ----------------------------------------------------
         # Flatten Large
         # ----------------------------------------------------
 
-        ref_large_flat = (
-            ref_large.flatten(
-                start_dim=1
-            )
+        ref_large_flat = ref_large.flatten(
+            start_dim=1
         )
 
-        dist_large_flat = (
-            dist_large.flatten(
-                start_dim=1
-            )
+        dist_large_flat = dist_large.flatten(
+            start_dim=1
         )
 
         # ----------------------------------------------------
@@ -345,32 +460,35 @@ class DualEncoderFusion(nn.Module):
         )
 
         # ----------------------------------------------------
-        # Safety check
+        # Final dimension check
         # ----------------------------------------------------
 
         expected_dim = (
-            self.dim_base
-            + self.dim_large
+            self.num_layers_base
+            * self.dim_base
+            +
+            self.num_layers_large
+            * self.dim_large
         )
 
         if ref_combined.shape[1] != expected_dim:
-
             raise ValueError(
-                "Unexpected feature dimension: "
-                f"expected {expected_dim}, "
-                f"got {ref_combined.shape[1]}"
+                "Unexpected combined reference "
+                "feature dimension. "
+                f"Expected {expected_dim}, "
+                f"got {ref_combined.shape[1]}."
             )
 
         if dist_combined.shape[1] != expected_dim:
-
             raise ValueError(
-                "Unexpected distorted feature "
-                f"dimension: expected {expected_dim}, "
-                f"got {dist_combined.shape[1]}"
+                "Unexpected combined distorted "
+                "feature dimension. "
+                f"Expected {expected_dim}, "
+                f"got {dist_combined.shape[1]}."
             )
 
         # ----------------------------------------------------
-        # MLP
+        # MLP regression
         # ----------------------------------------------------
 
         predicted_mos = self.aggregator(
@@ -380,9 +498,17 @@ class DualEncoderFusion(nn.Module):
 
         return predicted_mos
 
+
+# ============================================================
+# ADVANCED ATTENTION AGGREGATOR
+# ============================================================
+
 class AdvancedAttentionAggregator(nn.Module):
     """
     Advanced Transformer-based IQA aggregator.
+
+    This model keeps the encoder layers as individual
+    tokens instead of flattening them.
 
     Inputs:
 
@@ -397,6 +523,16 @@ class AdvancedAttentionAggregator(nn.Module):
 
         dist_large:
             [B, L_large, 1024]
+
+    Processing:
+
+        1. Compute absolute reference-distorted difference.
+        2. Project Base features to proj_dim.
+        3. Project Large features to proj_dim.
+        4. Concatenate Base and Large layer tokens.
+        5. Add learnable CLS token.
+        6. Apply Transformer Encoder.
+        7. Use CLS representation for regression.
 
     Output:
 
@@ -413,46 +549,111 @@ class AdvancedAttentionAggregator(nn.Module):
         transformer_layers=1,
         dropout=0.3,
     ):
-
         super().__init__()
 
-        # Project Base and Large into the same latent space
+        # ----------------------------------------------------
+        # Save configuration
+        # ----------------------------------------------------
+
+        self.dim_base = dim_base
+        self.dim_large = dim_large
+        self.proj_dim = proj_dim
+        self.num_heads = num_heads
+        self.transformer_layers = transformer_layers
+        self.dropout = dropout
+
+        # ----------------------------------------------------
+        # Safety checks
+        # ----------------------------------------------------
+
+        if proj_dim % num_heads != 0:
+            raise ValueError(
+                "proj_dim must be divisible by "
+                "num_heads. "
+                f"Got proj_dim={proj_dim}, "
+                f"num_heads={num_heads}."
+            )
+
+        if transformer_layers <= 0:
+            raise ValueError(
+                "transformer_layers must be > 0."
+            )
+
+        # ----------------------------------------------------
+        # Base projection
+        # ----------------------------------------------------
+
         self.proj_base = nn.Linear(
             dim_base,
             proj_dim,
         )
+
+        # ----------------------------------------------------
+        # Large projection
+        # ----------------------------------------------------
 
         self.proj_large = nn.Linear(
             dim_large,
             proj_dim,
         )
 
+        # ----------------------------------------------------
         # Learnable CLS token
+        # ----------------------------------------------------
+
         self.cls_token = nn.Parameter(
-            torch.randn(1, 1, proj_dim)
+            torch.randn(
+                1,
+                1,
+                proj_dim,
+            )
         )
 
+        # ----------------------------------------------------
         # Transformer Encoder
-        encoder_layer = nn.TransformerEncoderLayer(
-            d_model=proj_dim,
-            nhead=num_heads,
-            dim_feedforward=proj_dim * 2,
-            batch_first=True,
-            dropout=dropout,
+        # ----------------------------------------------------
+
+        encoder_layer = (
+            nn.TransformerEncoderLayer(
+                d_model=proj_dim,
+                nhead=num_heads,
+                dim_feedforward=proj_dim * 2,
+                dropout=dropout,
+                batch_first=True,
+                activation="gelu",
+                norm_first=False,
+            )
         )
 
-        self.transformer = nn.TransformerEncoder(
-            encoder_layer,
-            num_layers=transformer_layers,
+        self.transformer = (
+            nn.TransformerEncoder(
+                encoder_layer,
+                num_layers=transformer_layers,
+            )
         )
 
+        # ----------------------------------------------------
         # Regression head
+        # ----------------------------------------------------
+
         self.head = nn.Sequential(
-            nn.Linear(proj_dim, 128),
+            nn.Linear(
+                proj_dim,
+                128,
+            ),
             nn.ReLU(),
-            nn.Dropout(dropout),
-            nn.Linear(128, 1),
+            nn.Dropout(
+                p=dropout
+            ),
+            nn.Linear(
+                128,
+                1,
+            ),
         )
+
+    # ========================================================
+    # FORWARD
+    # ========================================================
 
     def forward(
         self,
@@ -461,10 +662,84 @@ class AdvancedAttentionAggregator(nn.Module):
         ref_large,
         dist_large,
     ):
+        """
+        Forward pass.
 
-        # ----------------------------------------------
+        Inputs:
+
+            ref_base:
+                [B, L_base, D_base]
+
+            dist_base:
+                [B, L_base, D_base]
+
+            ref_large:
+                [B, L_large, D_large]
+
+            dist_large:
+                [B, L_large, D_large]
+
+        Returns:
+
+            predicted MOS:
+                [B]
+        """
+
+        # ----------------------------------------------------
+        # Shape checks
+        # ----------------------------------------------------
+
+        if ref_base.shape != dist_base.shape:
+            raise ValueError(
+                "Base reference and distorted "
+                "features must have identical shapes. "
+                f"Got {ref_base.shape} and "
+                f"{dist_base.shape}."
+            )
+
+        if ref_large.shape != dist_large.shape:
+            raise ValueError(
+                "Large reference and distorted "
+                "features must have identical shapes. "
+                f"Got {ref_large.shape} and "
+                f"{dist_large.shape}."
+            )
+
+        if ref_base.ndim != 3:
+            raise ValueError(
+                "Base features must have shape "
+                "[B, L, D]. "
+                f"Got {ref_base.shape}."
+            )
+
+        if ref_large.ndim != 3:
+            raise ValueError(
+                "Large features must have shape "
+                "[B, L, D]. "
+                f"Got {ref_large.shape}."
+            )
+
+        # ----------------------------------------------------
+        # Feature dimension checks
+        # ----------------------------------------------------
+
+        if ref_base.shape[-1] != self.dim_base:
+            raise ValueError(
+                "Unexpected Base feature dimension. "
+                f"Expected {self.dim_base}, "
+                f"got {ref_base.shape[-1]}."
+            )
+
+        if ref_large.shape[-1] != self.dim_large:
+            raise ValueError(
+                "Unexpected Large feature dimension. "
+                f"Expected {self.dim_large}, "
+                f"got {ref_large.shape[-1]}."
+            )
+
+        # ----------------------------------------------------
         # 1. Reference / distorted difference
-        # ----------------------------------------------
+        # ----------------------------------------------------
 
         diff_base = torch.abs(
             ref_base - dist_base
@@ -474,17 +749,21 @@ class AdvancedAttentionAggregator(nn.Module):
             ref_large - dist_large
         )
 
-        # ----------------------------------------------
-        # 2. Projection to common latent space
-        # ----------------------------------------------
+        # ----------------------------------------------------
+        # 2. Project Base and Large to common space
+        # ----------------------------------------------------
 
-        base_tokens = self.proj_base(diff_base)
+        base_tokens = self.proj_base(
+            diff_base
+        )
 
-        large_tokens = self.proj_large(diff_large)
+        large_tokens = self.proj_large(
+            diff_large
+        )
 
-        # ----------------------------------------------
+        # ----------------------------------------------------
         # 3. Concatenate layer tokens
-        # ----------------------------------------------
+        # ----------------------------------------------------
 
         layer_tokens = torch.cat(
             [
@@ -494,9 +773,9 @@ class AdvancedAttentionAggregator(nn.Module):
             dim=1,
         )
 
-        # ----------------------------------------------
+        # ----------------------------------------------------
         # 4. Add CLS token
-        # ----------------------------------------------
+        # ----------------------------------------------------
 
         batch_size = layer_tokens.size(0)
 
@@ -514,22 +793,34 @@ class AdvancedAttentionAggregator(nn.Module):
             dim=1,
         )
 
-        # ----------------------------------------------
-        # 5. Transformer
-        # ----------------------------------------------
+        # ----------------------------------------------------
+        # 5. Transformer Encoder
+        # ----------------------------------------------------
 
-        output = self.transformer(sequence)
+        output = self.transformer(
+            sequence
+        )
 
-        # ----------------------------------------------
+        # ----------------------------------------------------
         # 6. CLS representation
-        # ----------------------------------------------
+        # ----------------------------------------------------
 
-        cls_output = output[:, 0, :]
+        cls_output = output[
+            :,
+            0,
+            :,
+        ]
 
-        # ----------------------------------------------
-        # 7. MOS regression
-        # ----------------------------------------------
+        # ----------------------------------------------------
+        # 7. Regression head
+        # ----------------------------------------------------
 
-        score = self.head(cls_output)
+        score = self.head(
+            cls_output
+        )
+
+        # ----------------------------------------------------
+        # Output [B]
+        # ----------------------------------------------------
 
         return score.squeeze(-1)
