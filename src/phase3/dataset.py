@@ -10,14 +10,11 @@ from torch.utils.data import Dataset
 
 class FeatureDataset(Dataset):
     """
-    Dataset for Phase 3 DualEncoderFusion.
+    Dataset for the Advanced Attention Aggregator.
 
-    Loads features from two encoders:
+    Loads SigLIP2 Base and Large features.
 
-        - SigLIP2 Base
-        - SigLIP2 Large
-
-    Expected .pt format:
+    Stored feature format:
 
         ref_features:
             [num_layers, num_samples, feature_dim]
@@ -28,28 +25,33 @@ class FeatureDataset(Dataset):
         mos:
             [num_samples]
 
-    The dataset returns all layers for both encoders.
+    Returned sample:
 
-    Example for PIPAL:
+        ref_base:
+            [num_layers_base, feature_dim_base]
 
-        Base:
-            [13, 23200, 768]
+        dist_base:
+            [num_layers_base, feature_dim_base]
 
-        Large:
-            [25, 23200, 1024]
+        ref_large:
+            [num_layers_large, feature_dim_large]
 
-    Therefore:
+        dist_large:
+            [num_layers_large, feature_dim_large]
 
-        Base flattened dimension:
-            13 * 768 = 9984
+        mos:
+            scalar
 
-        Large flattened dimension:
-            25 * 1024 = 25600
+    The DataLoader therefore produces:
 
-    The absolute difference between reference and distorted
-    features is NOT computed here.
+        ref_base:
+            [batch_size, num_layers_base, feature_dim_base]
 
-    It is computed inside DualEncoderFusion / IQAFeatureAggregator.
+        ref_large:
+            [batch_size, num_layers_large, feature_dim_large]
+
+    IMPORTANT:
+        No flattening is performed.
     """
 
     def __init__(
@@ -57,21 +59,6 @@ class FeatureDataset(Dataset):
         features_base_path,
         features_large_path,
     ):
-        """
-        Args:
-            features_base_path:
-                Path to SigLIP2 Base .pt file.
-
-            features_large_path:
-                Path to SigLIP2 Large .pt file.
-        """
-
-        self.features_base_path = features_base_path
-        self.features_large_path = features_large_path
-
-        # ====================================================
-        # LOAD FEATURE FILES
-        # ====================================================
 
         self.data_base = torch.load(
             features_base_path,
@@ -85,156 +72,83 @@ class FeatureDataset(Dataset):
             weights_only=False,
         )
 
-        # ====================================================
-        # CHECK REQUIRED KEYS
-        # ====================================================
+        # --------------------------------------------------
+        # Load features
+        # --------------------------------------------------
 
-        required_keys = [
-            "ref_features",
-            "dist_features",
-            "mos",
-        ]
+        self.ref_base = self.data_base["ref_features"].float()
+        self.dist_base = self.data_base["dist_features"].float()
 
-        for key in required_keys:
+        self.ref_large = self.data_large["ref_features"].float()
+        self.dist_large = self.data_large["dist_features"].float()
 
-            if key not in self.data_base:
-                raise KeyError(
-                    f"Missing key '{key}' in "
-                    f"Base feature file: "
-                    f"{features_base_path}"
+        self.mos_base = self.data_base["mos"].float().flatten()
+        self.mos_large = self.data_large["mos"].float().flatten()
+
+        # --------------------------------------------------
+        # Check dimensions
+        # --------------------------------------------------
+
+        for name, tensor in {
+            "ref_base": self.ref_base,
+            "dist_base": self.dist_base,
+            "ref_large": self.ref_large,
+            "dist_large": self.dist_large,
+        }.items():
+
+            if tensor.ndim != 3:
+                raise ValueError(
+                    f"{name} must be 3D "
+                    f"[num_layers, num_samples, feature_dim]. "
+                    f"Found {tensor.shape}"
                 )
 
-            if key not in self.data_large:
-                raise KeyError(
-                    f"Missing key '{key}' in "
-                    f"Large feature file: "
-                    f"{features_large_path}"
-                )
-
-        # ====================================================
-        # LOAD FEATURES
-        # ====================================================
-
-        self.ref_base = self.data_base[
-            "ref_features"
-        ].float()
-
-        self.dist_base = self.data_base[
-            "dist_features"
-        ].float()
-
-        self.ref_large = self.data_large[
-            "ref_features"
-        ].float()
-
-        self.dist_large = self.data_large[
-            "dist_features"
-        ].float()
-
-        # ====================================================
-        # CHECK FEATURE DIMENSIONS
-        # ====================================================
-
-        if self.ref_base.ndim != 3:
-            raise ValueError(
-                "Base ref_features must have shape "
-                "[num_layers, num_samples, feature_dim]. "
-                f"Found shape: {self.ref_base.shape}"
-            )
-
-        if self.dist_base.ndim != 3:
-            raise ValueError(
-                "Base dist_features must have shape "
-                "[num_layers, num_samples, feature_dim]. "
-                f"Found shape: {self.dist_base.shape}"
-            )
-
-        if self.ref_large.ndim != 3:
-            raise ValueError(
-                "Large ref_features must have shape "
-                "[num_layers, num_samples, feature_dim]. "
-                f"Found shape: {self.ref_large.shape}"
-            )
-
-        if self.dist_large.ndim != 3:
-            raise ValueError(
-                "Large dist_features must have shape "
-                "[num_layers, num_samples, feature_dim]. "
-                f"Found shape: {self.dist_large.shape}"
-            )
-
-        # ====================================================
-        # CHECK REF / DIST SHAPES WITHIN EACH MODEL
-        # ====================================================
+        # --------------------------------------------------
+        # Check ref/dist shapes
+        # --------------------------------------------------
 
         if self.ref_base.shape != self.dist_base.shape:
-
             raise ValueError(
-                "Base reference and distorted features "
-                "have different shapes:\n"
-                f"  ref_base:  {self.ref_base.shape}\n"
-                f"  dist_base: {self.dist_base.shape}"
+                "Base reference/distorted shapes do not match: "
+                f"{self.ref_base.shape} vs "
+                f"{self.dist_base.shape}"
             )
 
         if self.ref_large.shape != self.dist_large.shape:
-
             raise ValueError(
-                "Large reference and distorted features "
-                "have different shapes:\n"
-                f"  ref_large:  {self.ref_large.shape}\n"
-                f"  dist_large: {self.dist_large.shape}"
+                "Large reference/distorted shapes do not match: "
+                f"{self.ref_large.shape} vs "
+                f"{self.dist_large.shape}"
             )
 
-        # ====================================================
-        # LOAD MOS
-        # ====================================================
+        # --------------------------------------------------
+        # Check number of samples
+        # --------------------------------------------------
 
-        self.mos_base = self.data_base[
-            "mos"
-        ].float().flatten()
+        n_base = self.ref_base.shape[1]
+        n_large = self.ref_large.shape[1]
 
-        self.mos_large = self.data_large[
-            "mos"
-        ].float().flatten()
-
-        # ====================================================
-        # CHECK NUMBER OF SAMPLES
-        # ====================================================
-
-        num_samples_base = self.ref_base.shape[1]
-
-        num_samples_large = self.ref_large.shape[1]
-
-        if num_samples_base != num_samples_large:
-
+        if n_base != n_large:
             raise ValueError(
-                "Base and Large contain different "
-                "numbers of samples:\n"
-                f"  Base:  {num_samples_base}\n"
-                f"  Large: {num_samples_large}"
+                f"Base and Large have different number of samples: "
+                f"{n_base} vs {n_large}"
             )
 
-        if len(self.mos_base) != num_samples_base:
-
+        if len(self.mos_base) != n_base:
             raise ValueError(
-                "Number of Base MOS values does not "
-                "match number of Base samples:\n"
-                f"  MOS:     {len(self.mos_base)}\n"
-                f"  Samples: {num_samples_base}"
+                f"Base MOS length {len(self.mos_base)} "
+                f"does not match samples {n_base}"
             )
 
-        if len(self.mos_large) != num_samples_large:
-
+        if len(self.mos_large) != n_large:
             raise ValueError(
-                "Number of Large MOS values does not "
-                "match number of Large samples:\n"
-                f"  MOS:     {len(self.mos_large)}\n"
-                f"  Samples: {num_samples_large}"
+                f"Large MOS length {len(self.mos_large)} "
+                f"does not match samples {n_large}"
             )
 
-        # ====================================================
-        # CHECK MOS ALIGNMENT
-        # ====================================================
+        # --------------------------------------------------
+        # Check MOS alignment
+        # --------------------------------------------------
 
         if not torch.allclose(
             self.mos_base,
@@ -242,17 +156,14 @@ class FeatureDataset(Dataset):
             atol=1e-6,
         ):
             raise ValueError(
-                "MOS vectors from Base and Large "
-                "are different. The two feature files "
-                "may not refer to the same sample ordering."
+                "Base and Large MOS vectors are different."
             )
 
-        # Use one common MOS vector
         self.mos = self.mos_base
 
-        # ====================================================
-        # IMAGE NAMES
-        # ====================================================
+        # --------------------------------------------------
+        # Image names
+        # --------------------------------------------------
 
         self.image_names = self.data_base.get(
             "image_names",
@@ -260,31 +171,14 @@ class FeatureDataset(Dataset):
         )
 
         if len(self.image_names) != len(self.mos):
-
             raise ValueError(
                 "Number of image names does not match "
-                "number of samples:\n"
-                f"  Names:   {len(self.image_names)}\n"
-                f"  Samples: {len(self.mos)}"
+                "number of samples."
             )
 
-        # ====================================================
-        # MODEL CONFIGURATION
-        # ====================================================
-
-        self.model_config_base = self.data_base.get(
-            "model_config",
-            "unknown",
-        )
-
-        self.model_config_large = self.data_large.get(
-            "model_config",
-            "unknown",
-        )
-
-        # ====================================================
-        # FEATURE SHAPES / DIMENSIONS
-        # ====================================================
+        # --------------------------------------------------
+        # Dimensions
+        # --------------------------------------------------
 
         self.num_layers_base = self.ref_base.shape[0]
         self.feature_dim_base = self.ref_base.shape[2]
@@ -292,89 +186,26 @@ class FeatureDataset(Dataset):
         self.num_layers_large = self.ref_large.shape[0]
         self.feature_dim_large = self.ref_large.shape[2]
 
-        # Flattened dimensions used by DualEncoderFusion
-        self.dim_base = (
-            self.num_layers_base
-            * self.feature_dim_base
-        )
-
-        self.dim_large = (
-            self.num_layers_large
-            * self.feature_dim_large
-        )
-
-        # ====================================================
-        # SUMMARY
-        # ====================================================
-
-        print("\nFeatureDataset initialized:")
-        print(
-            f"  Base features:  {self.ref_base.shape}"
-        )
-        print(
-            f"  Large features: {self.ref_large.shape}"
-        )
-        print(
-            f"  Samples:        {len(self.mos)}"
-        )
-        print(
-            f"  Base dim:       {self.dim_base}"
-        )
-        print(
-            f"  Large dim:      {self.dim_large}"
-        )
-
-    # ========================================================
-    # LENGTH
-    # ========================================================
+        print("\nFeatureDataset initialized")
+        print(f"  Base:  {self.ref_base.shape}")
+        print(f"  Large: {self.ref_large.shape}")
+        print(f"  MOS:   {self.mos.shape}")
+        print(f"  Base feature dim:  {self.feature_dim_base}")
+        print(f"  Large feature dim: {self.feature_dim_large}")
 
     def __len__(self):
         return len(self.mos)
 
-    # ========================================================
-    # GET ITEM
-    # ========================================================
-
     def __getitem__(self, index):
 
         return {
-            # ------------------------------------------------
-            # SigLIP2 Base
-            # Shape:
-            # [num_layers_base, feature_dim_base]
-            # ------------------------------------------------
+            "ref_base": self.ref_base[:, index, :],
+            "dist_base": self.dist_base[:, index, :],
 
-            "ref_base": self.ref_base[
-                :, index, :
-            ],
-
-            "dist_base": self.dist_base[
-                :, index, :
-            ],
-
-            # ------------------------------------------------
-            # SigLIP2 Large
-            # Shape:
-            # [num_layers_large, feature_dim_large]
-            # ------------------------------------------------
-
-            "ref_large": self.ref_large[
-                :, index, :
-            ],
-
-            "dist_large": self.dist_large[
-                :, index, :
-            ],
-
-            # ------------------------------------------------
-            # MOS
-            # ------------------------------------------------
+            "ref_large": self.ref_large[:, index, :],
+            "dist_large": self.dist_large[:, index, :],
 
             "mos": self.mos[index],
-
-            # ------------------------------------------------
-            # Image name
-            # ------------------------------------------------
 
             "name": self.image_names[index],
         }

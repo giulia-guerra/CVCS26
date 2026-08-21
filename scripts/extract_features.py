@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-=======
->>>>>>> origin/main
 import os
 import torch
 from src.models import VisionEncoder, MODEL_REGISTRY
@@ -58,7 +55,7 @@ def extract_and_save(model_key, dataset_name):
         name=dataset_name, 
         root_dir=root_dir, 
         batch_size=model_batch_size, 
-        shuffle=False, # 👈 FONDAMENTALE: shuffle=False per l'estrazione! Vogliamo l'ordine esatto
+        shuffle=False, # FONDAMENTALE: shuffle=False per l'estrazione! Vogliamo l'ordine esatto
         transform=None # Lasciamo None così ci arrivano le PIL Image pure
     ) 
     
