@@ -1,3 +1,13 @@
+# Il codice definisce i moduli di aggregazione e regressione utilizzati nella Phase 3.
+# IQAFeatureAggregator utilizza un MLP per trasformare la differenza assoluta
+# tra feature reference e distorted nel MOS predetto, con diverse varianti di complessità.
+# DualEncoderFusion estende questo approccio combinando le feature di tutti i layer
+# di SigLIP2 Base e Large. Infine, AdvancedAttentionAggregator utilizza proiezioni
+# lineari e un Transformer Encoder per modellare le relazioni tra i layer dei due encoder
+# prima della regressione finale del MOS.
+
+
+
 import torch
 import torch.nn as nn
 

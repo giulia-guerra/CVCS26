@@ -1,3 +1,10 @@
+# Il codice genera i grafici dell'ablation study della Phase 3 a partire
+# dai risultati salvati in formato CSV. Confronta le varianti small, medium
+# e large del modello sui dataset Mixed, LIVE e TID2013, visualizzando le
+# metriche SRCC e PLCC attraverso grafici a linee e a barre. I grafici
+# vengono salvati automaticamente nella directory di output specificata [results/].
+
+
 import argparse
 from pathlib import Path
 

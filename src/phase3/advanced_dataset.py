@@ -1,3 +1,10 @@
+# Il codice definisce un Dataset PyTorch per l'esperimento Advanced Phase 3.
+# Carica le feature di tutti i layer degli encoder SigLIP2 Base e Large,
+# convertendole dal formato [layer, sample, feature] a [sample, layer, feature].
+# Il dataset mantiene separate le feature reference e distorted e associa a ogni
+# immagine il relativo MOS, verificando inoltre la coerenza dei dati tra i due encoder.
+
+
 import torch
 from torch.utils.data import Dataset
 

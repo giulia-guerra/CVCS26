@@ -1,3 +1,12 @@
+# Il codice gestisce l'estrazione e il salvataggio delle feature da tutti i layer
+# dei modelli DINOv2, DINOv3 e SigLIP2 sui dataset LIVE, TID2013 e PIPAL.
+# Utilizza batch size specifiche per ciascun modello, mantiene l'ordine delle immagini
+# durante l'estrazione e salva in formato .pt le feature reference e distorted,
+# i relativi MOS e i nomi delle immagini. Le feature vengono estratte tramite
+# il VisionEncoder con backbone congelato e utilizzate nelle successive fasi
+# di benchmark e training del progetto.
+
+
 import os
 import torch
 from src.models import VisionEncoder, MODEL_REGISTRY

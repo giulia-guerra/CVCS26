@@ -1,3 +1,19 @@
+# Il codice implementa il training della Phase 3 sul mixture dataset LIVE + TID2013. 
+# Carica le feature estratte da SigLIP2 Base e Large,
+# le combina utilizzando il modello DualEncoderFusion e normalizza
+# feature e MOS utilizzando esclusivamente i dati del training set.
+
+# Il modello viene addestrato per predire il MOS delle immagini e
+# valutato sul validation set tramite MSE, SRCC e PLCC, sia sul
+# dataset combinato sia separatamente su LIVE e TID2013.
+
+# Durante il training vengono salvati il miglior checkpoint, la
+# history delle metriche e le predizioni del modello migliore,
+# permettendo successivamente di confrontare le diverse varianti
+# dell'architettura (small, medium e large) tramite l'esperimento
+# di mixture ablation.
+
+
 import argparse
 import csv
 import random

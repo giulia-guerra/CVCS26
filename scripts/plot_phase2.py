@@ -1,4 +1,4 @@
-# lettura del CSV prodotto da analyze_phase2.py
+# Lettura del CSV prodotto da analyze_phase2.py
 # creazione dei plot: layer vs SRCC
 # salvataggio immagini in: results/phase2/plots/
 

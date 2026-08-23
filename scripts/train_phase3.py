@@ -8,23 +8,21 @@
 # ============================================================
 # PHASE 3 - DUAL ENCODER SUPERVISED TRAINING
 # ============================================================
-#
+
 # Implements supervised training of the DualEncoderFusion
 # MLP baseline for Image Quality Assessment.
-#
+
 # The code:
-#
 #   1. loads frozen encoder features;
 #   2. creates a reproducible train/validation split;
-#   3. computes normalization statistics ONLY on the
-#      training set;
+#   3. computes normalization statistics ONLY on the training set;
 #   4. normalizes features and MOS;
 #   5. trains DualEncoderFusion using MSE loss;
 #   6. evaluates SRCC and PLCC on the validation set;
 #   7. saves the best checkpoint according to SRCC;
 #   8. saves the training history after EVERY epoch;
 #   9. uses early stopping based on validation SRCC.
-#
+
 # The CSV history is written incrementally so that it is not
 # lost if the training process is interrupted or killed.
 # ============================================================

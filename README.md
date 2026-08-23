@@ -190,34 +190,34 @@ results/phase2/tables/final_phase2_comparison.csv
 
 #### Best Layer per Encoder and Dataset
 
-| Dataset | Model | Best Layer | SRCC | PLCC |
-______________________________________________
-| LIVE | DINOv2 Base | 4 | 0.963 | 0.727 |
-| LIVE | DINOv2 Large | 9 | 0.954 | 0.760 |
-| LIVE | DINOv2 Small | 4 | 0.959 | 0.720 |
-| LIVE | DINOv3 Base | 4 | 0.960 | 0.759 |
-| LIVE | DINOv3 Large | 6 | 0.956 | 0.665 |
-| LIVE | DINOv3 Small | 4 | 0.964 | 0.722 |
-| LIVE | SigLIP2 Base | 8 | 0.962 | 0.626 |
-| LIVE | SigLIP2 Large | 18 | 0.960 | 0.672 |
-______________________________________________
-| PIPAL | DINOv2 Small | 2 | 0.579 | 0.508 |
-| PIPAL | DINOv2 Base | 1 | 0.578 | 0.486 |
-| PIPAL | DINOv2 Large | 1 | 0.554 | 0.435 |
-| PIPAL | DINOv3 Base | 1 | 0.539 | 0.406 |
-| PIPAL | DINOv3 Large | 1 | 0.565 | 0.442 |
-| PIPAL | DINOv3 Small | 2 | 0.570 | 0.518 |
-| PIPAL | SigLIP2 Large | 15 | 0.564 | 0.576 |
-| PIPAL | SigLIP2 Base | 7 | 0.579 | 0.595 |
-______________________________________________
-| TID2013 | DINOv2 Base | 12 | 0.709 | 0.656 |
-| TID2013 | DINOv2 Large | 5 | 0.691 | 0.667 |
-| TID2013 | DINOv2 Small | 12 | 0.759 | 0.692 |
-| TID2013 | DINOv3 Base | 12 | 0.730 | 0.679 |
-| TID2013 | DINOv3 Large | 24 | 0.708 | 0.639 |
-| TID2013 | DINOv3 Small | 12 | 0.772 | 0.702 |
-| TID2013 | SigLIP2 Base | 11 | 0.803 | 0.667 |
-| TID2013 | SigLIP2 Large | 20 | 0.804 | 0.676 |
+| Dataset | Model         | Best Layer | SRCC  | PLCC  |
+| ------- | ------------- | ---------- | ----- | ------|
+| LIVE    | DINOv2 Base   | 4          | 0.963 | 0.727 |
+| LIVE    | DINOv2 Large  | 9          | 0.954 | 0.760 |
+| LIVE    | DINOv2 Small  | 4          | 0.959 | 0.720 |
+| LIVE    | DINOv3 Base   | 4          | 0.960 | 0.759 |
+| LIVE    | DINOv3 Large  | 6          | 0.956 | 0.665 |
+| LIVE    | DINOv3 Small  | 4          | 0.964 | 0.722 |
+| LIVE    | SigLIP2 Base  | 8          | 0.962 | 0.626 |
+| LIVE    | SigLIP2 Large | 18         | 0.960 | 0.672 |
+| ------- | ------------- | ---------- | ----- | ------|
+| PIPAL   | DINOv2 Small  | 2          | 0.579 | 0.508 |
+| PIPAL   | DINOv2 Base   | 1          | 0.578 | 0.486 |
+| PIPAL   | DINOv2 Large  | 1          | 0.554 | 0.435 |
+| PIPAL   | DINOv3 Base   | 1          | 0.539 | 0.406 |
+| PIPAL   | DINOv3 Large  | 1          | 0.565 | 0.442 |
+| PIPAL   | DINOv3 Small  | 2          | 0.570 | 0.518 |
+| PIPAL   | SigLIP2 Large | 15         | 0.564 | 0.576 |
+| PIPAL   | SigLIP2 Base  | 7          | 0.579 | 0.595 |
+| ------- | ------------- | ---------- | ----- | ------|
+| TID2013 | DINOv2 Base   | 12         | 0.709 | 0.656 |
+| TID2013 | DINOv2 Large  | 5          | 0.691 | 0.667 |
+| TID2013 | DINOv2 Small  | 12         | 0.759 | 0.692 |
+| TID2013 | DINOv3 Base   | 12         | 0.730 | 0.679 |
+| TID2013 | DINOv3 Large  | 24         | 0.708 | 0.639 |
+| TID2013 | DINOv3 Small  | 12         | 0.772 | 0.702 |
+| TID2013 | SigLIP2 Base  | 11         | 0.803 | 0.667 |
+| TID2013 | SigLIP2 Large | 20         | 0.804 | 0.676 |
 
 #### Main Findings
 
@@ -267,11 +267,11 @@ The goal is to learn a regression function that maps encoder features to Mean Op
 
 The first Phase 3 experiment uses a dual-encoder architecture combining SigLIP2 Base and SigLIP2 Large features.
 
-| Model | Variant | Best Epoch | MSE | SRCC | PLCC |
-____________________________________________________
-| Dual SigLIP2 | Small | 15 | 4759.99 | 0.7952 | 0.8322 |
-| Dual SigLIP2 | Medium | 13 | 5411.94 | 0.8173 | 0.8410 |
-| **Dual SigLIP2** | **Large** | **15** | 6993.55 | **0.8222** | **0.8521** |
+| Model            | Variant   | Best Epoch | MSE     | SRCC       | PLCC       |
+| ---------------- | --------- | ---------- | ------- | ---------- | ---------- |
+| Dual SigLIP2     | Small     | 15         | 4759.99 | 0.7952     | 0.8322     |
+| Dual SigLIP2     | Medium    | 13         | 5411.94 | 0.8173     | 0.8410     |
+| **Dual SigLIP2** | **Large** | **15**     | 6993.55 | **0.8222** | **0.8521** |
 
 The **Dual SigLIP2 Large** configuration achieved the best Phase 3 baseline performance, with **SRCC = 0.8222** and **PLCC = 0.8521** on the PIPAL validation split.
 
@@ -291,11 +291,11 @@ All variants use the same feature extraction pipeline, train/validation split, n
 
 ### Mixture Ablation Results
 
-| Variant | Mixed SRCC | Mixed PLCC | LIVE SRCC | LIVE PLCC | TID2013 SRCC | TID2013 PLCC |
-___________________________________________________________________________________________
-| **Medium** | **0.7500** | **0.8994** | 0.7843 | 0.8021 | **0.8542** | **0.8949** |
-| Small | 0.7301 | 0.8925 | **0.7921** | **0.8064** | 0.8070 | 0.8630 |
-| Large | 0.6250 | 0.5822 | -0.9598 | -0.8649 | 0.8117 | 0.8127 |
+| Variant    | Mixed SRCC | Mixed PLCC | LIVE SRCC  | LIVE PLCC  | TID2013 SRCC | TID2013 PLCC |
+| ---------- | ---------- | ---------- | ---------- | ---------- | ------------ | ------------ |
+| **Medium** | **0.7500** | **0.8994** | 0.7843     | 0.8021     | **0.8542**   | **0.8949**   |
+| Small      | 0.7301     | 0.8925     | **0.7921** | **0.8064** | 0.8070       | 0.8630       |
+| Large      | 0.6250     | 0.5822     | -0.9598    | -0.8649    | 0.8117       | 0.8127       |
 
 The **Medium** variant achieves the best overall performance on the mixed validation set, reaching **SRCC = 0.7500** and **PLCC = 0.8994**.
 
@@ -313,20 +313,167 @@ Overall, Phase 3 demonstrates that frozen visual encoder features can be success
 
 ![Phase 3 Ablation](results/phase3_mixture_ablation_plots/phase3_ablation_mixed.png)
 
-## Phase 3 – Advanced Architectures
+## Phase 3 – Advanced Architectures and Ablation Studies
 
-Planned experiments:
+The advanced Phase 3 experiments extend the baseline regression approach by exploiting multi-layer representations and combining features from different SigLIP2 encoder sizes.
 
-- Cross-Attention Fusion
-- Feature Fusion Module
+The objective is to investigate whether richer feature representations and attention-based fusion can improve perceptual quality prediction compared with the standard Phase 3 MLP baseline.
 
-Evaluation metrics:
+### Advanced Architecture
 
-- SRCC
-- PLCC
-- MSE
+The main advanced model is the `AdvancedAttentionAggregator`.
 
-Datasets:
+It combines:
 
-- PIPAL
-- LIVE + TID2013 mixture
+- SigLIP2 Base multi-layer features.
+- SigLIP2 Large multi-layer features.
+- Independent linear projections for Base and Large features.
+- Multi-layer feature aggregation.
+- A learnable CLS token.
+- Transformer-based self-attention.
+- Multi-head attention.
+- A lightweight MLP regression head.
+
+The architecture receives reference and distorted image features from both encoders and learns to aggregate information across encoder layers and encoder scales before predicting the MOS.
+
+Unlike the baseline model, which operates on a selected feature representation, the advanced architecture exploits information from multiple layers and uses attention mechanisms to learn how these representations should be combined.
+
+### Advanced PIPAL Experiment
+
+The first advanced experiment was performed on PIPAL using:
+
+- SigLIP2 Base all-layer features.
+- SigLIP2 Large all-layer features.
+- Joint attention-based feature aggregation.
+- Frozen vision encoders.
+- Supervised MOS regression.
+
+The model uses a Transformer-based attention module to learn which feature representations and encoder layers are most informative for perceptual quality prediction.
+
+Training configuration:
+
+- Projection dimension: 256
+- Transformer layers: 1
+- Attention heads: 4
+- Hidden dimension of regression head: 128
+- Dropout: 0.3
+- Optimizer: AdamW
+- Loss: MSE
+- Validation ratio: 0.2
+- Random seed: 42
+- Early stopping based on validation SRCC
+
+### Advanced PIPAL Results
+
+The advanced attention-based architecture was compared directly with the Phase 3 baseline on the PIPAL validation set.
+
+| Model                  | Dataset   | MSE         | SRCC       | PLCC       |
+| ---------------------- | --------- | ----------- | ---------- | ---------- |
+| Phase 3 Baseline       | PIPAL     | 6566.77     | 0.7214     | 0.7477     |
+| **Advanced Attention** | **PIPAL** | **4752.39** | **0.8131** | **0.8349** |
+
+The **Advanced Attention** model achieves the best performance for all three evaluation metrics.
+
+Compared with the Phase 3 baseline:
+
+| Metric | Baseline | Advanced    | Improvement      |
+| ------ | -------- | ----------- | ---------------- |
+| SRCC   | 0.7214   | **0.8131**  | **+12.71%**      |
+| PLCC   | 0.7477   | **0.8349**  | **+11.65%**      |
+| MSE    | 6566.77  | **4752.39** | **27.63% lower** |
+
+The advanced model improves both rank and linear correlation with human perceptual quality while simultaneously reducing the prediction error.
+
+In particular:
+
+- **SRCC increases from 0.7214 to 0.8131**, indicating stronger agreement with the ranking of perceived image quality.
+- **PLCC increases from 0.7477 to 0.8349**, indicating a stronger linear relationship between predicted and ground-truth MOS.
+- **MSE decreases from 6566.77 to 4752.39**, corresponding to a **27.63% reduction in prediction error**.
+
+These results demonstrate that multi-layer attention-based fusion of SigLIP2 Base and Large features provides a substantial improvement over the standard Phase 3 regression baseline on PIPAL.
+
+### LIVE + TID2013 Mixture Experiment
+
+A second experiment investigates whether the dual-encoder regression architecture generalizes across different IQA datasets.
+
+The model is trained jointly on:
+
+- LIVE
+- TID2013
+
+The experiment uses:
+
+- SigLIP2 Base features.
+- SigLIP2 Large features.
+- Dataset-stratified train/validation splitting.
+- Feature normalization computed only from the training set.
+- Dataset-specific MOS normalization.
+- Separate evaluation on LIVE and TID2013.
+- Evaluation on the combined validation set.
+
+This experiment evaluates whether the regression architecture can learn a common mapping from visual representations to perceptual quality across datasets with different distortion characteristics and MOS distributions.
+
+### Mixture Ablation
+
+A regression-head ablation was performed by comparing three `DualEncoderFusion` variants:
+
+- `small`
+- `medium`
+- `large`
+
+The three configurations use the same feature extraction pipeline, dataset split, normalization strategy, optimizer and random seed. The main variable is the capacity of the fusion/regression architecture.
+
+The comparison evaluates:
+
+- Mixed-dataset SRCC.
+- Mixed-dataset PLCC.
+- Mixed-dataset MSE.
+- LIVE SRCC and PLCC.
+- TID2013 SRCC and PLCC.
+
+The **Medium** configuration provided the best overall trade-off between model capacity and generalization on the mixed LIVE + TID2013 validation set.
+
+The Small configuration achieved slightly better performance on LIVE, while the Medium configuration provided the strongest overall performance on the mixed validation set and the best results on TID2013.
+
+The Large configuration showed unstable validation behavior and substantially worse mixed-dataset performance. This indicates that increasing model capacity does not necessarily improve IQA performance and may lead to poorer generalization.
+
+### Evaluation Metrics
+
+The advanced experiments use:
+
+- **SRCC** – Spearman Rank Correlation Coefficient
+- **PLCC** – Pearson Linear Correlation Coefficient
+- **MSE** – Mean Squared Error
+
+Higher SRCC and PLCC indicate better agreement with human perceptual quality rankings, while lower MSE indicates more accurate MOS prediction.
+
+### Outputs
+
+The advanced experiments generate:
+
+- Trained model checkpoints.
+- Best-model checkpoints selected according to validation SRCC.
+- Training history CSV files.
+- Prediction CSV files.
+- SRCC, PLCC and MSE results.
+- Ablation tables.
+- Comparison plots.
+- Baseline vs. advanced model comparisons.
+
+### Main Findings
+
+The complete Phase 3 experiments show that:
+
+- Frozen vision encoder features can be successfully used for supervised IQA regression.
+- Combining SigLIP2 Base and Large representations can improve performance over simpler feature-based approaches.
+- Multi-layer representations provide richer information than relying exclusively on a single encoder layer.
+- Attention-based aggregation allows the model to learn which representations are most relevant for perceptual quality prediction.
+- The **Advanced Attention** architecture substantially outperforms the Phase 3 baseline on PIPAL.
+- Compared with the baseline, the Advanced Attention model improves **SRCC by 12.71%** and **PLCC by 11.65%**, while reducing **MSE by 27.63%**.
+- The improvement across all three metrics indicates that the advanced architecture provides both stronger correlation with human perceptual judgments and more accurate MOS prediction.
+- Increasing regression-head capacity does not necessarily improve generalization in the LIVE + TID2013 mixture experiment.
+- The **Medium** `DualEncoderFusion` configuration provides the best overall trade-off between model capacity and generalization in the mixture setting.
+- The Large configuration can become unstable when trained on the mixed LIVE + TID2013 setting.
+- The optimal architecture depends on the dataset and experimental setting.
+
+Overall, the advanced Phase 3 experiments demonstrate that exploiting **multi-layer visual representations and attention-based fusion** can significantly improve perceptual quality prediction compared with a simpler regression baseline.

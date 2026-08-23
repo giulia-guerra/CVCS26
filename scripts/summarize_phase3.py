@@ -1,3 +1,11 @@
+# Il codice genera un riepilogo completo dei risultati della Phase 3 a partire
+# da un file CSV. Identifica i migliori modelli per SRCC, PLCC e MSE su ciascun
+# dataset e confronta le prestazioni del modello Advanced Attention con il
+# Baseline, calcolando differenze assolute e miglioramenti percentuali.
+# Infine, stampa il riepilogo a terminale e lo salva in un file di testo 
+# [results/phase3/tables/phase3_summary.txt].
+
+
 import argparse
 import os
 

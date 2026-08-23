@@ -1,3 +1,11 @@
+# Il codice definisce lo script di valutazione della Phase 3, che combina
+# i dataset LIVE e TID2013 utilizzando le feature di tutti i layer di SigLIP2
+# Base e Large. Carica il checkpoint del modello DualEncoderFusion, applica
+# la normalizzazione delle feature e del MOS e valuta le predizioni sia sul
+# dataset combinato sia separatamente su LIVE e TID2013 tramite MSE, SRCC e PLCC.
+# Infine, salva le predizioni e i relativi valori MOS in un file CSV.
+
+
 import argparse
 import csv
 import sys

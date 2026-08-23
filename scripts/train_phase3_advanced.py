@@ -1,3 +1,12 @@
+# Il codice implementa il training dell'Advanced Phase 3 con un aggregatore
+# basato su Transformer Attention. Utilizza le feature di tutti i layer di
+# SigLIP2 Base e Large, normalizza il MOS usando esclusivamente i dati di
+# training e ottimizza il modello tramite MSELoss e AdamW. Ad ogni epoca
+# valuta il modello sul validation set tramite MSE, SRCC e PLCC e salva
+# automaticamente il checkpoint con il miglior SRCC, utilizzando anche
+# l'early stopping per evitare overfitting.
+
+
 import argparse
 import os
 import random

@@ -1,3 +1,10 @@
+# Il codice genera i grafici di confronto tra i modelli della Phase 3
+# a partire dai risultati salvati in un file CSV. Per ciascun dataset,
+# confronta le prestazioni dei diversi modelli utilizzando MSE, SRCC e PLCC,
+# producendo grafici a barre separati. I risultati vengono salvati
+# automaticamente nella directory di output specificata [results/].
+
+
 import argparse
 import os
 

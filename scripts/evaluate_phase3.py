@@ -1,5 +1,4 @@
 # Valutazione del modello DualEncoderFusion addestrato nella Fase 3.
-#
 # Il codice:
 #   1. carica il checkpoint migliore;
 #   2. ricostruisce il dataset;

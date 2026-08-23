@@ -1,3 +1,10 @@
+# Il codice raccoglie e sintetizza i risultati dell'ablation study della Phase 3.
+# Cerca i file di history delle varianti small, medium e large, seleziona per ciascuna
+# la configurazione con il miglior SRCC sul dataset Mixed e raccoglie le metriche
+# MSE, SRCC e PLCC per Mixed, LIVE e TID2013. Infine, ordina i risultati in base
+# al Mixed SRCC, li salva in un file CSV e stampa una tabella riepilogativa.
+
+
 import argparse
 import csv
 from pathlib import Path

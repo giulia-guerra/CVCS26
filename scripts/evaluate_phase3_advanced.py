@@ -1,3 +1,10 @@
+# Il codice definisce lo script di valutazione dell'Advanced Phase 3.
+# Carica il dataset con le feature di tutti i layer di SigLIP2 Base e Large
+# e il checkpoint del modello Transformer già addestrato. Il modello viene
+# valutato sul validation set, riportando le predizioni alla scala originale
+# del MOS e calcolando MSE, SRCC e PLCC per misurare le prestazioni della rete.
+
+
 import argparse
 
 import numpy as np

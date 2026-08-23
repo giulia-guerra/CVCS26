@@ -1,3 +1,12 @@
+# Il codice definisce un Vision Encoder generico basato sui modelli pre-addestrati
+# disponibili tramite Hugging Face. Il preprocessore e il modello vengono caricati
+# automaticamente, mentre il backbone viene mantenuto congelato durante l'estrazione
+# delle feature. Per ogni immagine vengono estratte le rappresentazioni di tutti i layer,
+# utilizzando il CLS token per DINO e il Global Average Pooling per SigLIP, seguite da
+# normalizzazione L2. Il MODEL_REGISTRY raccoglie infine tutti gli encoder DINOv2,
+# DINOv3 e SigLIP2 utilizzati negli esperimenti del progetto.
+
+
 import torch
 import torch.nn as nn
 from transformers import AutoImageProcessor, AutoModel

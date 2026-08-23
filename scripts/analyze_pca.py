@@ -1,3 +1,10 @@
+# Il codice valuta l'effetto della riduzione dimensionale delle feature tramite PCA.
+# Carica e concatena le feature di tutti i layer del modello, utilizzando LIVE e TID2013
+# per addestrare la PCA e PIPAL come dataset di test. Le feature vengono ridotte a 256
+# dimensioni, normalizzate nuovamente e confrontate tramite Cosine Similarity.
+# Infine, le prestazioni vengono valutate su PIPAL utilizzando le metriche SRCC e PLCC.
+
+
 import torch
 import torch.nn.functional as F
 from sklearn.decomposition import PCA

@@ -1,4 +1,4 @@
-# genera due grafici distinti, pronti per essere inseriti nel report, in base ai dati ottenuti da 
+# Genera due grafici distinti, pronti per essere inseriti nel report, in base ai dati ottenuti da 
 # results/phase2/tables/final_phase2_comparison.csv:
 
 # best_srcc_per_model.png --> ti permette di confrontare direttamente la performance massima ottenuta 
