@@ -28,7 +28,7 @@ wandb/
 
 # Output
 outputs/
-results/
+# results/
 
 # Sistema operativo
 .DS_Store

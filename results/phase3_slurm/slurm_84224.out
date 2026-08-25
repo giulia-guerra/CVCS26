@@ -1,0 +1,131 @@
+========================================
+CVCS26 - PHASE 3
+========================================
+Job ID: 84224
+Node:   germano
+Date:   Fri Aug 14 11:17:24 CEST 2026
+========================================
+Python:
+/homes/gguerra/envs/cvcs_env/bin/python
+Python 3.13.13
+========================================
+PyTorch / CUDA
+========================================
+PyTorch: 2.7.1+cu118
+CUDA available: True
+CUDA version: 11.8
+GPU: NVIDIA GeForce RTX 2080 Ti
+========================================
+NVIDIA SMI
+========================================
+Fri Aug 14 11:17:31 2026       
++---------------------------------------------------------------------------------------+
+| NVIDIA-SMI 535.247.01             Driver Version: 535.247.01   CUDA Version: 12.2     |
+|-----------------------------------------+----------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |         Memory-Usage | GPU-Util  Compute M. |
+|                                         |                      |               MIG M. |
+|=========================================+======================+======================|
+|   0  NVIDIA GeForce RTX 2080 Ti     Off | 00000000:67:00.0 Off |                  N/A |
+| 24%   26C    P8              24W / 250W |      0MiB / 11264MiB |      0%      Default |
+|                                         |                      |                  N/A |
++-----------------------------------------+----------------------+----------------------+
+|   1  NVIDIA GeForce RTX 2080 Ti     Off | 00000000:68:00.0 Off |                  N/A |
+| 41%   27C    P8              20W / 260W |      0MiB / 11264MiB |      0%      Default |
+|                                         |                      |                  N/A |
++-----------------------------------------+----------------------+----------------------+
+                                                                                         
++---------------------------------------------------------------------------------------+
+| Processes:                                                                            |
+|  GPU   GI   CI        PID   Type   Process name                            GPU Memory |
+|        ID   ID                                                             Usage      |
+|=======================================================================================|
+|  No running processes found                                                           |
++---------------------------------------------------------------------------------------+
+========================================
+=================================================================
+PHASE 3 - SUPERVISED IQA TRAINING
+=================================================================
+Features:       /work/cvcs2026/Cross_Entropy_Champions/features/PIPAL/dinov2_small_all_layers.pt
+Layer:          2
+Device:         cuda
+Epochs:         50
+Batch size:     256
+Learning rate:  0.001
+Weight decay:   0.0001
+Hidden dim:     256
+Dropout:        0.2
+Val ratio:      0.2
+Patience:       7
+Seed:            42
+
+Dataset:
+  Model:       dinov2_small
+  Samples:     23200
+  Feature dim: 384
+
+Split:
+  Train: 18560
+  Val:   4640
+
+Normalization:
+  MOS mean: 1448.6295
+  MOS std:  121.7952
+
+Model:
+IQARegressor(
+  (network): Sequential(
+    (0): Linear(in_features=384, out_features=256, bias=True)
+    (1): ReLU()
+    (2): Dropout(p=0.2, inplace=False)
+    (3): Linear(in_features=256, out_features=128, bias=True)
+    (4): ReLU()
+    (5): Dropout(p=0.2, inplace=False)
+    (6): Linear(in_features=128, out_features=1, bias=True)
+  )
+)
+Epoch 001/50 | Train Loss: 0.5660 | Val MSE: 7179.5132 | SRCC: 0.694762 | PLCC: 0.712691
+  -> Best checkpoint saved (SRCC=0.694762)
+Epoch 002/50 | Train Loss: 0.4682 | Val MSE: 6649.8770 | SRCC: 0.710547 | PLCC: 0.739176
+  -> Best checkpoint saved (SRCC=0.710547)
+Epoch 003/50 | Train Loss: 0.4313 | Val MSE: 6564.4473 | SRCC: 0.721421 | PLCC: 0.747786
+  -> Best checkpoint saved (SRCC=0.721421)
+Epoch 004/50 | Train Loss: 0.4073 | Val MSE: 6206.8594 | SRCC: 0.727014 | PLCC: 0.757170
+  -> Best checkpoint saved (SRCC=0.727014)
+Epoch 005/50 | Train Loss: 0.3848 | Val MSE: 6227.9282 | SRCC: 0.726232 | PLCC: 0.756479
+Epoch 006/50 | Train Loss: 0.3693 | Val MSE: 6046.2686 | SRCC: 0.738642 | PLCC: 0.766126
+  -> Best checkpoint saved (SRCC=0.738642)
+Epoch 007/50 | Train Loss: 0.3572 | Val MSE: 6007.0464 | SRCC: 0.735483 | PLCC: 0.767355
+Epoch 008/50 | Train Loss: 0.3383 | Val MSE: 6030.0166 | SRCC: 0.741701 | PLCC: 0.766909
+  -> Best checkpoint saved (SRCC=0.741701)
+Epoch 009/50 | Train Loss: 0.3296 | Val MSE: 5964.6353 | SRCC: 0.739696 | PLCC: 0.768452
+Epoch 010/50 | Train Loss: 0.3119 | Val MSE: 5922.0493 | SRCC: 0.742428 | PLCC: 0.772405
+  -> Best checkpoint saved (SRCC=0.742428)
+Epoch 011/50 | Train Loss: 0.3057 | Val MSE: 5879.3208 | SRCC: 0.744967 | PLCC: 0.773146
+  -> Best checkpoint saved (SRCC=0.744967)
+Epoch 012/50 | Train Loss: 0.3000 | Val MSE: 5874.0576 | SRCC: 0.745799 | PLCC: 0.775220
+  -> Best checkpoint saved (SRCC=0.745799)
+Epoch 013/50 | Train Loss: 0.2933 | Val MSE: 6157.1895 | SRCC: 0.738992 | PLCC: 0.767666
+Epoch 014/50 | Train Loss: 0.2868 | Val MSE: 5911.1353 | SRCC: 0.749533 | PLCC: 0.772766
+  -> Best checkpoint saved (SRCC=0.749533)
+Epoch 015/50 | Train Loss: 0.2723 | Val MSE: 5967.2412 | SRCC: 0.744231 | PLCC: 0.771399
+Epoch 016/50 | Train Loss: 0.2710 | Val MSE: 5905.2593 | SRCC: 0.747202 | PLCC: 0.775700
+Epoch 017/50 | Train Loss: 0.2642 | Val MSE: 5814.9214 | SRCC: 0.747796 | PLCC: 0.774859
+Epoch 018/50 | Train Loss: 0.2617 | Val MSE: 5824.3257 | SRCC: 0.747487 | PLCC: 0.774972
+Epoch 019/50 | Train Loss: 0.2523 | Val MSE: 5862.4795 | SRCC: 0.745888 | PLCC: 0.775300
+Epoch 020/50 | Train Loss: 0.2504 | Val MSE: 5943.4375 | SRCC: 0.747840 | PLCC: 0.772560
+Epoch 021/50 | Train Loss: 0.2402 | Val MSE: 5780.7573 | SRCC: 0.748841 | PLCC: 0.776040
+
+Early stopping at epoch 21 (no improvement for 7 epochs).
+
+=================================================================
+TRAINING FINISHED
+=================================================================
+Best epoch:    14
+Best Val SRCC: 0.749533
+Checkpoint:    results/phase3_slurm/best_dinov2_small_layer2.pt
+History:       results/phase3_slurm/history_dinov2_small_layer2.csv
+========================================
+PHASE 3 FINISHED
+========================================
+Fri Aug 14 11:17:56 CEST 2026

@@ -1,0 +1,3 @@
+model,dataset,mse,srcc,plcc
+Phase3 Baseline,PIPAL,6566.770020,0.721420,0.747745
+Advanced Attention,PIPAL,4752.388184,0.813131,0.834864

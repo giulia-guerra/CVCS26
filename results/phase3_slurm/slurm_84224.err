@@ -1,0 +1,2 @@
+[2026-08-14T11:17:31.592] error: _nvml_set_freqs: Failed to set memory and graphics clock frequency pair (7000, 2100) for the GPU: Not Supported
+Could not set frequencies for all GPUs. Set 0/1 total GPUs
