@@ -2,7 +2,8 @@
 # Riceve in input le feature estratte dall'encoder e le elabora attraverso
 # due layer fully connected con ReLU e dropout, producendo infine un singolo
 # valore che rappresenta il MOS predetto per ogni immagine.
-
+# Codice superato dal file aggregation.py, che implementa un approccio più sofisticato 
+# per la regressione del MOS.
 
 import torch.nn as nn
 

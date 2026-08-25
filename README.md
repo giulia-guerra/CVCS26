@@ -78,12 +78,12 @@ Implemented components:
 * Dataset loaders for LIVE, TID2013 and PIPAL.
 * Support for Full-Reference IQA samples (reference + distorted image).
 * Similarity metrics:
-  * Cosine Similarity
-  * L2 Distance
+   - Cosine Similarity
+   - L2 Distance
 
 * Correlation metrics:
-  * SRCC (Spearman Rank Correlation Coefficient)
-  * PLCC (Pearson Linear Correlation Coefficient)
+  - SRCC (Spearman Rank Correlation Coefficient)
+  - PLCC (Pearson Linear Correlation Coefficient)
 
 * CSV logging utilities.
 * Unit tests for datasets, metrics and feature processing.
@@ -103,18 +103,18 @@ The objective of Phase 2 was to investigate which intermediate layers of the vis
 Evaluated encoder families:
 
 * DINOv2
-  * Small
-  * Base
-  * Large
+  - Small
+  - Base
+  - Large
 
 * DINOv3
-  * Small
-  * Base
-  * Large
+  - Small
+  - Base
+  - Large
 
 * SigLIP2
-  * Base
-  * Large
+  - Base
+  - Large
 
 Datasets:
 * LIVE
@@ -236,6 +236,10 @@ results/phase2/tables/final_phase2_comparison.csv
 * The differences between SRCC and PLCC further indicate that feature similarity and perceived image quality do not always follow a purely linear relationship.
 
 * The selected best layers will be used in Phase 3 to extract features for supervised MOS prediction. For each encoder-dataset pair, the layer identified during Phase 2 will be used to construct the feature representation provided to the supervised regression model.
+
+* Pooling Strategy Impact (CLS vs. Patch Mean): The consistent superiority of SigLIP2 over DINO models on complex datasets like PIPAL and TID2013 can be attributed to their feature aggregation strategies. DINO relies on the [CLS] token, which heavily compresses spatial information to capture global semantics. In contrast, SigLIP2 utilizes Global Average Pooling over patch tokens, successfully preserving high-frequency spatial statistics (e.g., local noise, blur, compression artifacts) strictly required for low-level IQA.
+ 
+* Layer Trends: DINO models exhibit a "bell-curve" trend, where early/intermediate layers (e.g., layer 4-6) perform best, while final layers collapse as they become invariant to low-level distortions. Conversely, SigLIP2 models show an increasing trend, reaching their peak in very deep layers (e.g., layer 18-20), proving that its contrastive pre-training preserves perceptual features even at high semantic levels.
 
 Phase 2 successfully identified the most informative layer for each encoder and dataset. The results demonstrate that layer selection is an important component of the IQA pipeline and provide the basis for the supervised learning stage developed in Phase 3.
 
@@ -475,5 +479,7 @@ The complete Phase 3 experiments show that:
 - The **Medium** `DualEncoderFusion` configuration provides the best overall trade-off between model capacity and generalization in the mixture setting.
 - The Large configuration can become unstable when trained on the mixed LIVE + TID2013 setting.
 - The optimal architecture depends on the dataset and experimental setting.
+- Dynamic vs. Static Aggregation: While the standard MLP baseline applies static, learned weights to all 35,000 concatenated features (leading to severe overfitting in the Large variant), the Advanced Attention Aggregator uses a learnable [CLS] token acting as an informational bottleneck. Through cross-attention, the model dynamically learns to "look at" only the most informative layers for each specific degraded image, drastically reducing overfitting and enabling the +12.71% SRCC surge on PIPAL.
+
 
 Overall, the advanced Phase 3 experiments demonstrate that exploiting **multi-layer visual representations and attention-based fusion** can significantly improve perceptual quality prediction compared with a simpler regression baseline.
