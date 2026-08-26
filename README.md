@@ -313,10 +313,6 @@ The results suggest that the **Medium architecture provides the best overall tra
 
 Overall, Phase 3 demonstrates that frozen visual encoder features can be successfully mapped to perceptual quality scores using a relatively lightweight supervised regression head.
 
-### Ablation Plot
-
-![Phase 3 Ablation](results/phase3_mixture_ablation_plots/phase3_ablation_mixed.png)
-
 ## Phase 3 – Advanced Architectures and Ablation Studies
 
 The advanced Phase 3 experiments extend the baseline regression approach by exploiting multi-layer representations and combining features from different SigLIP2 encoder sizes.

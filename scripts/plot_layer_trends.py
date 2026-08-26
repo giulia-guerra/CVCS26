@@ -36,7 +36,10 @@ def plot_layer_trend():
     # Rimuoviamo la riga "mean" per avere solo i layer numerici
     df = df[df['layer'] != 'mean'].copy()
     df['layer'] = pd.to_numeric(df['layer'])
-    
+
+    # Escludiamo il layer 0 per mostrare solo i veri blocchi Transformer (1-24)
+    df = df[df['layer'] > 0]
+
     # Modelli che vogliamo confrontare
     models_to_plot = [
         "facebook/dinov2-large",
@@ -52,9 +55,10 @@ def plot_layer_trend():
         
         plt.plot(model_data['layer'], model_data['srcc'], marker='o', linewidth=2, label=label_name)
 
-    plt.title("Trend delle Performance IQA Strato per Strato (TID2013)", fontsize=14, fontweight='bold')
-    plt.xlabel("Indice del Layer (Da Iniziale a Finale)", fontsize=12)
-    plt.ylabel("SRCC (Correlazione di Spearman)", fontsize=12)
+    plt.title("IQA Performance Trends Layer by Layer (TID2013)", fontsize=14, fontweight='bold')
+    plt.xlabel("Layer index", fontsize=12)
+    plt.xlim(left=1)
+    plt.ylabel("SRCC", fontsize=12)
     plt.legend(fontsize=12, loc="lower right")
     plt.tight_layout()
     plt.savefig("layer_trend_comparison.png", dpi=300)
