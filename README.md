@@ -237,9 +237,9 @@ results/phase2/tables/final_phase2_comparison.csv
 
 * The selected best layers will be used in Phase 3 to extract features for supervised MOS prediction. For each encoder-dataset pair, the layer identified during Phase 2 will be used to construct the feature representation provided to the supervised regression model.
 
-* Pooling Strategy Impact (CLS vs. Patch Mean): The consistent superiority of SigLIP2 over DINO models on complex datasets like PIPAL and TID2013 can be attributed to their feature aggregation strategies. DINO relies on the [CLS] token, which heavily compresses spatial information to capture global semantics. In contrast, SigLIP2 utilizes Global Average Pooling over patch tokens, successfully preserving high-frequency spatial statistics (e.g., local noise, blur, compression artifacts) strictly required for low-level IQA.
+* Pooling Strategy and Representation Structure (CLS vs. Patch Mean): SigLIP2 achieves particularly strong performance on TID2013 and PIPAL compared with the evaluated DINO variants. One possible explanation is the difference in representation aggregation strategies. DINO relies on a global [CLS] token representation, whereas SigLIP2 uses Global Average Pooling over patch tokens. This may help preserve information distributed across local image regions that is useful for perceptual quality assessment. However, the current experiments do not independently isolate pooling strategy, architecture, and pretraining objective, so the observed differences should be interpreted as an association rather than as evidence of a direct causal relationship.
  
-* Layer Trends: DINO models exhibit a "bell-curve" trend, where early/intermediate layers (e.g., layer 4-6) perform best, while final layers collapse as they become invariant to low-level distortions. Conversely, SigLIP2 models show an increasing trend, reaching their peak in very deep layers (e.g., layer 18-20), proving that its contrastive pre-training preserves perceptual features even at high semantic levels.
+* Layer Trends: The observed results suggest that different encoder families distribute perceptual information differently across network depth. In many cases, intermediate layers outperform the final representation, supporting the hypothesis that low-level distortion-sensitive information may become less prominent in highly semantic representations. The exact trend varies across datasets and encoder architectures.
 
 Phase 2 successfully identified the most informative layer for each encoder and dataset. The results demonstrate that layer selection is an important component of the IQA pipeline and provide the basis for the supervised learning stage developed in Phase 3.
 
@@ -367,14 +367,14 @@ Training configuration:
 
 The advanced attention-based architecture was compared directly with the Phase 3 baseline on the PIPAL validation set.
 
-| Model                  | Dataset   | MSE         | SRCC       | PLCC       |
-| ---------------------- | --------- | ----------- | ---------- | ---------- |
-| Phase 3 Baseline       | PIPAL     | 6566.77     | 0.7214     | 0.7477     |
-| **Advanced Attention** | **PIPAL** | **4752.39** | **0.8131** | **0.8349** |
+| Model                       | Dataset   | MSE         | SRCC       | PLCC       |
+| --------------------------- | --------- | ----------- | ---------- | ---------- |
+| Phase 3 MLP Medium Baseline | PIPAL     | 6566.77     | 0.7214     | 0.7477     |
+| **Advanced Attention**      | **PIPAL** | **4752.39** | **0.8131** | **0.8349** |
 
-The **Advanced Attention** model achieves the best performance for all three evaluation metrics.
+The **Advanced Attention** model achieves the best performance relative to the Phase 3 MLP Medium baseline for all three evaluation metrics.
 
-Compared with the Phase 3 baseline:
+Compared with the Phase 3 MLP Medium baseline:
 
 | Metric | Baseline | Advanced    | Improvement      |
 | ------ | -------- | ----------- | ---------------- |
@@ -383,6 +383,8 @@ Compared with the Phase 3 baseline:
 | MSE    | 6566.77  | **4752.39** | **27.63% lower** |
 
 The advanced model improves both rank and linear correlation with human perceptual quality while simultaneously reducing the prediction error.
+
+The comparison is performed against the Phase 3 MLP Medium baseline. While the Advanced Attention architecture substantially improves over this baseline, the Dual SigLIP2 Large configuration achieves slightly higher SRCC and PLCC values (0.8222 and 0.8521 respectively). Therefore, the Advanced Attention model should not be interpreted as universally outperforming every Phase 3 configuration across all metrics.
 
 In particular:
 
@@ -468,14 +470,14 @@ The complete Phase 3 experiments show that:
 - Combining SigLIP2 Base and Large representations can improve performance over simpler feature-based approaches.
 - Multi-layer representations provide richer information than relying exclusively on a single encoder layer.
 - Attention-based aggregation allows the model to learn which representations are most relevant for perceptual quality prediction.
-- The **Advanced Attention** architecture substantially outperforms the Phase 3 baseline on PIPAL.
+- The **Advanced Attention** architecture substantially outperforms the Phase 3 MLP Medium baseline on PIPAL.
 - Compared with the baseline, the Advanced Attention model improves **SRCC by 12.71%** and **PLCC by 11.65%**, while reducing **MSE by 27.63%**.
 - The improvement across all three metrics indicates that the advanced architecture provides both stronger correlation with human perceptual judgments and more accurate MOS prediction.
 - Increasing regression-head capacity does not necessarily improve generalization in the LIVE + TID2013 mixture experiment.
 - The **Medium** `DualEncoderFusion` configuration provides the best overall trade-off between model capacity and generalization in the mixture setting.
 - The Large configuration can become unstable when trained on the mixed LIVE + TID2013 setting.
 - The optimal architecture depends on the dataset and experimental setting.
-- Dynamic vs. Static Aggregation: While the standard MLP baseline applies static, learned weights to all 35,000 concatenated features (leading to severe overfitting in the Large variant), the Advanced Attention Aggregator uses a learnable [CLS] token acting as an informational bottleneck. Through cross-attention, the model dynamically learns to "look at" only the most informative layers for each specific degraded image, drastically reducing overfitting and enabling the +12.71% SRCC surge on PIPAL.
+- Dynamic vs. Static Aggregation: While the standard MLP baseline applies static learned weights to the complete feature representation, the Advanced Attention Aggregator introduces a learnable [CLS] token and a structured information bottleneck. Through attention-based aggregation, the model can dynamically combine information from multiple encoder layers. This design may help reduce overfitting and contributes to the improved validation performance observed on PIPAL.
 
 
 Overall, the advanced Phase 3 experiments demonstrate that exploiting **multi-layer visual representations and attention-based fusion** can significantly improve perceptual quality prediction compared with a simpler regression baseline.
